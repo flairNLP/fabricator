@@ -2,3 +2,4 @@ BERT and Co. Get the Job Done: Task-specific Knowledge Extraction From LLMs
 Task-specific Knowledge Extraction From LLMs to Support Normal-sized LMs
 BERT = ChatGPT? Creating Training Datasets with Zero Effort to Fine-Tune Language Models
 Creating Training Datasets with Zero Effort to Fine-Tune Language Models
+Fine-Tuning Language Models Without Effort: Creating Training-Datasets with ChatGPT and Co.
