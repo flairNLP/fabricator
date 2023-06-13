@@ -1,11 +1,10 @@
 import logging
 import random
 from abc import abstractmethod
-from typing import List, Optional
+from typing import List
 
 from langchain.llms import BaseLLM
 from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
 
 from ai_dataset_generator.task_templates.base import TaskDataPoint
 from ai_dataset_generator.prompt_templates.base import TaskPrompt
