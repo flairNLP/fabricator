@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Dict
+from typing import Optional
 
 from ai_dataset_generator.task_templates.base import TaskDataPoint
 
