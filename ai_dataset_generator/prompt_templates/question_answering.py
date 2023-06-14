@@ -1,55 +1,34 @@
-from typing import Dict, List
-
-from ai_dataset_generator.prompt_templates.base import TaskPrompt
-from langchain.prompts import PromptTemplate, FewShotPromptTemplate
+from ai_dataset_generator.prompt_templates import AnnotationPrompt
 
 
-class QuestionGenerationPrompt(TaskPrompt):
+class QuestionAnnotationPrompt(AnnotationPrompt):
     def __init__(self):
         super().__init__(
-            fewshot_variables=["context", "question"],
-            input_variable=["input_context"],
-            task_type="question_generation"
-        )
-
-    def get_prompt(self, support_examples: List[Dict[str, str]]):
-        example_formatter_template = """Text: {context}\nQuestion: {question}"""
-
-        example_prompt = PromptTemplate(
-            input_variables=self.fewshot_variables,
-            template=example_formatter_template,
-        )
-
-        return FewShotPromptTemplate(
-            examples=support_examples,
-            prefix="Given a text, create a difficult question that can be answered using the text. The question must describe the context of the text.",
-            example_prompt=example_prompt,
-            suffix="Text: {input_context}\nQuestion: ",
-            input_variables=["input_context"],
+            task_description="Given a text, create a difficult question that can be answered using the text. The question must describe the context of the text.",
+            support_set_variables=["context", "question"],
+            support_set_formatting_template="""Text: {context}\nQuestion: {question}""",
+            annotation_variables=["context"],
+            annotation_formatting_template="""Text: {context}\nQuestion: """,
         )
 
 
-class AnswerGenerationPrompt(TaskPrompt):
+class AnswerAnnotationPrompt(AnnotationPrompt):
     def __init__(self):
         super().__init__(
-            fewshot_variables=["context", "question", "answer"],
-            input_variable=["input_context", "input_question"],
-            task_type="answer_generation"
+            task_description="Given a text and a question, extract the answer to this question from the text. The answer must be word for word exactly as it appears in the text.",
+            support_set_variables=["context", "question", "answer"],
+            support_set_formatting_template="""Text: {context}\nQuestion: {question}\nAnswer: {answer}""",
+            annotation_variables=["context", "question"],
+            annotation_formatting_template="""Text: {context}\nQuestion: {question}\nAnswer: """,
         )
 
-    def get_prompt(self, support_examples: Dict[str, str]):
-        example_formatter_template = """Text: {context}\nQuestion: {question}\nAnswer: {answer}"""
 
-        example_prompt = PromptTemplate(
-            input_variables=self.fewshot_variables,
-            template=example_formatter_template,
+class ContextAnnotationPrompt(AnnotationPrompt):
+    def __init__(self):
+        super().__init__(
+        task_description="Given a question and a answer, generate a text to which the question and answer fits.",
+        support_set_variables=["context", "question", "answer"],
+        support_set_formatting_template="""Question: {question}\nAnswer: {answer}\nText: {context}""",
+        annotation_variables=["question", "answer"],
+        annotation_formatting_template="""Question: {question}\nAnswer: {answer}\nText: """
         )
-
-        return FewShotPromptTemplate(
-            examples=support_examples,
-            prefix="Given a text and a question, extract the answer to this question from the text. The answer must be word for word exactly as it appears in the text.",
-            example_prompt=example_prompt,
-            suffix="Text: {input_context}\nQuestion{input_question}\nAnswer: ",
-            input_variables=["input_context", "input_question"],
-        )
-

@@ -1,12 +1,12 @@
 import logging
 from typing import Optional
 
-from ai_dataset_generator.task_templates.base import TaskDataPoint
+from ai_dataset_generator.task_templates.base import BaseDataPoint
 
 logger = logging.getLogger(__name__)
 
 
-class ExtractiveQADataPoint(TaskDataPoint):
+class ExtractiveQADataPoint(BaseDataPoint):
     """
     A data point for a question answering task.
 
@@ -21,21 +21,19 @@ class ExtractiveQADataPoint(TaskDataPoint):
     """
 
     def __init__(
-            self,
-            title: str,
-            question: str,
-            context: str,
-            answer: Optional[str] = None,
-            answer_start: Optional[int] = None,
+        self,
+        context: str,
+        question: Optional[str] = None,
+        answer: Optional[str] = None,
+        title: Optional[str] = None,
+        answer_start: Optional[int] = None,
     ):
         super().__init__()
-        self.title = title
-        self.question = question
         self.context = context
+        self.question = question
         self.answer = answer
-        if answer_start is not None:
-            self.answer_start = answer_start
-        else:
+        self.title = title
+        if answer is not None and answer_start is None:
             self.calculate_answer_start()
 
     def calculate_answer_start(self):
@@ -45,8 +43,8 @@ class ExtractiveQADataPoint(TaskDataPoint):
         answer_start = self.context.find(self.answer)
         if answer_start < 0:
             logger.warning(
-                f"Could not calculate the answer start because the context \"{self.context}\" "
-                f"does not contain the answer \"{self.answer}\"."
+                f'Could not calculate the answer start because the context "{self.context}" '
+                f'does not contain the answer "{self.answer}".'
             )
             self.answer_start = -1
         else:
