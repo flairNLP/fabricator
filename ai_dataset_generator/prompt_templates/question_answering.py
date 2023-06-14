@@ -26,9 +26,9 @@ class AnswerAnnotationPrompt(AnnotationPrompt):
 class ContextAnnotationPrompt(AnnotationPrompt):
     def __init__(self):
         super().__init__(
-        task_description="Given a question and a answer, generate a text to which the question and answer fits.",
-        support_set_variables=["context", "question", "answer"],
-        support_set_formatting_template="""Question: {question}\nAnswer: {answer}\nText: {context}""",
-        annotation_variables=["question", "answer"],
-        annotation_formatting_template="""Question: {question}\nAnswer: {answer}\nText: """
+            task_description="Given a question and a answer, generate a text to which the question and answer fits.",
+            support_set_variables=["context", "question", "answer"],
+            support_set_formatting_template="""Question: {question}\nAnswer: {answer}\nText: {context}""",
+            annotation_variables=["question", "answer"],
+            annotation_formatting_template="""Question: {question}\nAnswer: {answer}\nText: """,
         )
