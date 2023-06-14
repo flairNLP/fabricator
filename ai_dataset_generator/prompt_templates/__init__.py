@@ -9,5 +9,5 @@ __all__ = [
     "TextGenerationPrompt",
     "QuestionAnnotationPrompt",
     "AnswerAnnotationPrompt",
-    "ContextAnnotationPrompt"
+    "ContextAnnotationPrompt",
 ]
