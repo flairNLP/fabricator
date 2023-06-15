@@ -1,6 +1,6 @@
 from .base import BaseDataPoint
-from .ner import NERDataPoint
+from .sequence_labeling import SequenceLabelDataPoint
 from .plan_text import TextDataPoint
 from .question_answering import ExtractiveQADataPoint
 
-__all__ = ["BaseDataPoint", "TextDataPoint", "ExtractiveQADataPoint", "NERDataPoint"]
+__all__ = ["BaseDataPoint", "TextDataPoint", "ExtractiveQADataPoint", "SequenceLabelDataPoint"]
