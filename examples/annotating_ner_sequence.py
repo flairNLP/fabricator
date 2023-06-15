@@ -7,7 +7,7 @@ from langchain.llms import OpenAI
 from dotenv import load_dotenv
 
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.task_templates import NERDataPoint
+from ai_dataset_generator.task_templates import SequenceLabelDataPoint
 from ai_dataset_generator.prompt_templates import NamedEntityAnnotationPrompt
 
 load_dotenv()
@@ -19,8 +19,9 @@ def annotate_ner_data():
 
     dataset = load_dataset("conll2003", split="train")
     dataset = dataset.select(random.sample(range(len(dataset)), total_examples))
-
-    ner_samples = [NERDataPoint(tokens=sample["tokens"], annotations=sample["ner_tags"]) for sample in dataset]
+    
+    # This can be switched out for Chunking or POS
+    ner_samples = [SequenceLabelDataPoint(tokens=sample["tokens"], annotations=sample["ner_tags"]) for sample in dataset]
 
     unlabeled_examples, support_examples = ner_samples[:num_unlabeled], ner_samples[num_unlabeled:]
 
