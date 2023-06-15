@@ -37,8 +37,23 @@ class BasePrompt:
             for support_example in support_examples
         ]
 
+    # PHA: This allows a user with a custom prompt, to apply some string formatting, operations, etc. on the input text
+    def format_variables(self, variable: str, value: str) -> Dict[str, str]:
+        return {variable: value}
+
     def format_input(self, input_example: BaseDataPoint) -> Dict[str, str]:
-        return {attr: value for attr, value in vars(input_example).items() if attr in self.annotation_variables}
+        formatted_inputs = {}
+
+        # TODO: PHA: What if we have a property method
+        # 1. Either use a class variable like `variables` that stores the variables we want to use and format
+        # 2. Use `dir()`
+        for attr in dir(input_example):
+            if attr in self.annotation_variables:
+                formatted_input_variable = self.format_variables(attr, getattr(input_example, attr))
+                assert len(formatted_input_variable) == 1, "A unformatted input can only return one formatted input"
+                formatted_inputs.update(formatted_input_variable)
+
+        return formatted_inputs
 
     def add_annotation_to_input(self, input_example: BaseDataPoint, prediction: str) -> BaseDataPoint:
         cls = type(input_example)
