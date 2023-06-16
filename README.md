@@ -2,9 +2,13 @@
 
 This repository contains the code for generating datasets using LLMs.
 
-## Requirements
+## Setup
 
-Install the requirements using `pip install -r requirements.txt`.
+```
+conda create -y -n aidatasetgenerator python=3.10
+conda activate aidatasetgenerator
+pip install -r requirements.txt
+```
 
 ## Main components
 
