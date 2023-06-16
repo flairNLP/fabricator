@@ -5,6 +5,8 @@ This repository contains the code for generating datasets using LLMs.
 ## Setup
 
 ```
+git clone git@github.com:whoisjones/ai-dataset-generator.git
+cd ai-dataset-generator
 conda create -y -n aidatasetgenerator python=3.10
 conda activate aidatasetgenerator
 pip install -r requirements.txt
