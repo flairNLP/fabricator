@@ -21,7 +21,7 @@ def annotate_unlabeled_data():
             title=sample["title"],
             question=sample["question"],
             context=sample["context"],
-            answer=sample["answers"]["text"][0],
+            answer=sample["answers"]["text"][0] if sample["answers"]["text"] else None,
             answer_start=sample["answers"]["answer_start"][0] if sample["answers"]["answer_start"] else None,
         ) for sample in dataset]
 
