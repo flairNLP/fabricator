@@ -2,6 +2,7 @@ import os
 import random
 
 from datasets import load_dataset
+from haystack.nodes import PromptNode
 
 from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.task_templates import ExtractiveQADataPoint
