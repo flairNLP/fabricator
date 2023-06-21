@@ -1,5 +1,6 @@
 import random
 import sys
+
 sys.path.append("..")
 
 from datasets import load_dataset
@@ -12,6 +13,7 @@ from ai_dataset_generator.prompt_templates import NamedEntityAnnotationPrompt
 
 load_dotenv()
 
+
 def annotate_ner_data():
     num_support = 10
     num_unlabeled = 100
@@ -19,13 +21,24 @@ def annotate_ner_data():
 
     dataset = load_dataset("conll2003", split="train")
     dataset = dataset.select(random.sample(range(len(dataset)), total_examples))
-    
-    # This can be switched out for Chunking or POS
-    ner_samples = [SequenceLabelDataPoint(tokens=sample["tokens"], annotations=sample["ner_tags"]) for sample in dataset]
+
+    # Get NER tags and apply to datapoints
+
+    tags_key = "pos_tags"
+    features = dataset.features
+    feature_tags = features[tags_key].feature.names
+    ner_tags = {tag: idx for idx, tag in enumerate(list(feature_tags))}
+    print(ner_tags)
+    ner_samples = [
+        SequenceLabelDataPoint(tokens=sample["tokens"], annotations=sample[tags_key], tags=ner_tags)
+        for sample in dataset
+    ]
+    # or just use
+    # ner_samples = SequenceLabelDataPoint.build_data_points_from_dataset(dataset, "ner_tags")
 
     unlabeled_examples, support_examples = ner_samples[:num_unlabeled], ner_samples[num_unlabeled:]
 
-    prompt_template = NamedEntityAnnotationPrompt()
+    prompt_template = NamedEntityAnnotationPrompt(tags=ner_tags)
     llm = OpenAI(model_name="text-davinci-003")
     generator = DatasetGenerator(llm)
     generated_dataset = generator.generate(
@@ -35,6 +48,7 @@ def annotate_ner_data():
         max_prompt_calls=1,
     )
     print(generated_dataset)
+
 
 if __name__ == "__main__":
     annotate_ner_data()

@@ -29,10 +29,11 @@ class DatasetGenerator:
         num_samples_to_generate: int = 10,
         max_prompt_calls: int = 10,
     ) -> List[BaseDataPoint]:
-        # TODO: PHA: Dont like this, or it should be more clear, that we access the attributes of the DataPoint directly
-        # TODO: PHA: But also double list comprehensions??
-        if not all(hasattr(obj, attr) for obj in support_examples for attr in prompt_template.support_set_variables):
-            raise RuntimeError("Not all samples have the required attributes for the generation prompt template.")
+        # Check if required variables of the prompt template occure in every data point
+        # TODO: PHA: This might get expensive with big datasets
+        for required_attribute in prompt_template.support_set_variables:
+            if not all(required_attribute in sample.attributes.keys() for sample in support_examples):
+                raise RuntimeError("Not all samples have the required attributes for the generation prompt template.")
 
         generated_samples: List[BaseDataPoint] = []
 

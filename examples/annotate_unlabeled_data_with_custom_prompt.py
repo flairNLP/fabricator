@@ -23,7 +23,9 @@ def annotation_with_custom_prompt():
             context=sample["context"],
             answer=sample["answers"]["text"][0],
             answer_start=sample["answers"]["answer_start"][0] if sample["answers"]["answer_start"] else None,
-        ) for sample in dataset]
+        )
+        for sample in dataset
+    ]
 
     unlabeled_examples, support_examples = extractive_qa_samples[:num_unlabeled], extractive_qa_samples[num_unlabeled:]
 
@@ -32,7 +34,7 @@ def annotation_with_custom_prompt():
         support_set_variables=["context", "question", "answer"],
         support_set_formatting_template="""Question: {question}\nAnswer: {answer}\nText: {context}""",
         annotation_variables=["question", "answer"],
-        annotation_formatting_template="""Question: {question}\nAnswer: {answer}\nText: """
+        annotation_formatting_template="""Question: {question}\nAnswer: {answer}\nText: """,
     )
 
     llm = OpenAI(model_name="text-davinci-003")
@@ -43,6 +45,7 @@ def annotation_with_custom_prompt():
         prompt_template=custom_annotation_prompt,
         max_prompt_calls=1,
     )
+
 
 if __name__ == "__main__":
     annotation_with_custom_prompt()
