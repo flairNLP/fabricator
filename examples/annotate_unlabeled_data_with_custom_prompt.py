@@ -1,7 +1,8 @@
+import os
 import random
 
 from datasets import load_dataset
-from langchain.llms import OpenAI
+from haystack.nodes import PromptNode
 
 from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.task_templates import ExtractiveQADataPoint
@@ -35,8 +36,8 @@ def annotation_with_custom_prompt():
         annotation_formatting_template="""Question: {question}\nAnswer: {answer}\nText: """
     )
 
-    llm = OpenAI(model_name="text-davinci-003")
-    generator = DatasetGenerator(llm)
+    prompt_node = PromptNode(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
+    generator = DatasetGenerator(prompt_node)
     generated_dataset = generator.generate(
         unlabeled_examples=unlabeled_examples,
         support_examples=support_examples,
