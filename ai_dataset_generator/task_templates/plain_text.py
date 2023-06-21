@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from ai_dataset_generator.task_templates.base import BaseDataPoint
 
 
@@ -12,3 +14,8 @@ class TextDataPoint(BaseDataPoint):
     def __init__(self, text: str):
         super().__init__()
         self.text = text
+    
+    @property
+    def attributes(self) -> Dict[str, Any]:
+        return {"text": self.text}
+        
