@@ -1,11 +1,12 @@
+import os
 import random
 
 from datasets import load_dataset
-from langchain.llms import OpenAI
+from haystack.nodes import PromptNode
 
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.task_templates import ExtractiveQADataPoint
 from ai_dataset_generator.prompt_templates import AnswerAnnotationPrompt
+from ai_dataset_generator.task_templates import ExtractiveQADataPoint
 
 
 def annotate_unlabeled_data():
@@ -21,7 +22,7 @@ def annotate_unlabeled_data():
             title=sample["title"],
             question=sample["question"],
             context=sample["context"],
-            answer=sample["answers"]["text"][0],
+            answer=sample["answers"]["text"][0] if sample["answers"]["text"] else None,
             answer_start=sample["answers"]["answer_start"][0] if sample["answers"]["answer_start"] else None,
         )
         for sample in dataset
@@ -30,8 +31,8 @@ def annotate_unlabeled_data():
     unlabeled_examples, support_examples = extractive_qa_samples[:num_unlabeled], extractive_qa_samples[num_unlabeled:]
 
     prompt_template = AnswerAnnotationPrompt()
-    llm = OpenAI(model_name="text-davinci-003")
-    generator = DatasetGenerator(llm)
+    prompt_node = PromptNode(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
+    generator = DatasetGenerator(prompt_node)
     generated_dataset = generator.generate(
         unlabeled_examples=unlabeled_examples,
         support_examples=support_examples,

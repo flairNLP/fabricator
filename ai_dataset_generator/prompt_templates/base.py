@@ -1,9 +1,6 @@
 from typing import List, Dict
 
-from langchain.prompts import (
-    PromptTemplate,
-    FewShotPromptTemplate,
-)
+from langchain.prompts import FewShotPromptTemplate, PromptTemplate
 
 from ai_dataset_generator.task_templates.base import BaseDataPoint
 
@@ -27,8 +24,7 @@ class BasePrompt:
 
     def get_support_template(self):
         return PromptTemplate(
-            input_variables=self.support_set_variables,
-            template=self.support_set_formatting_template,
+            input_variables=self.support_set_variables, template=self.support_set_formatting_template,
         )
 
     def format_support_examples(self, support_examples: List[BaseDataPoint]) -> List[Dict[str, str]]:
