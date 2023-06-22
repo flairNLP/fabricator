@@ -1,6 +1,6 @@
 import logging
 import os
-import random
+
 
 from datasets import load_dataset
 from haystack.nodes import PromptNode
@@ -10,6 +10,8 @@ from ai_dataset_generator.prompt_templates.classification import \
     AddSingleLabelAnnotationPrompt
 from ai_dataset_generator.task_templates.classification import \
     SingleLabelClassificationDataPoint
+
+from ai_dataset_generator.dataset_loader.sampler import single_label_task_sampler
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +23,10 @@ def annotate_unlabeled_data():
     total_examples = num_support + num_unlabeled
 
     dataset = load_dataset("imdb", split="train")
-    dataset = dataset.select(random.sample(range(len(dataset)), total_examples))
-    all_labels = list(set(dataset["label"]))
 
+    dataset = single_label_task_sampler(dataset, label_column="label", num_examples=total_examples))
+
+    all_labels = list(set(dataset["label"]))
     sl_classification_samples = [
         SingleLabelClassificationDataPoint(text=sample["text"], label=sample["label"],) for sample in dataset
     ]
@@ -34,7 +37,6 @@ def annotate_unlabeled_data():
     )
 
     prompt_template = AddSingleLabelAnnotationPrompt(labels=all_labels)
-    # llm = OpenAI(model_name="text-davinci-003")
 
     prompt_node = PromptNode(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
     generator = DatasetGenerator(prompt_node)
