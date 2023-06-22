@@ -1,4 +1,4 @@
-from typing import Optional, List, Union
+from typing import List, Optional, Union
 
 from ai_dataset_generator.prompt_templates import AnnotationPrompt
 
@@ -64,10 +64,9 @@ class AddMultiLabelAnnotationPrompt(LabelClassificationPrompt):
     def __init__(self, labels: List[Union[str, int]], **kwargs):
         super().__init__(
             task_description=f"Given a text, determine its correct labels. The text has"
-                             f" zero, one, or more correct labels. The labels must be "
-                             f"from the following labels: "
-                             f"{self.formatted_labels(labels)}",
+            f" zero, one, or more correct labels. The labels must be "
+            f"from the following labels: "
+            f"{self.formatted_labels(labels)}",
             labels=labels,
             **kwargs,
         )
-

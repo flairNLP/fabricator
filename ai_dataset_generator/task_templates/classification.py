@@ -16,9 +16,7 @@ class SingleLabelClassificationDataPoint(BaseDataPoint):
     """
 
     def __init__(
-        self,
-        text: str,
-        label: Optional[Union[int, str]] = None,
+        self, text: str, label: Optional[Union[int, str]] = None,
     ):
         super().__init__()
         self.text = text
@@ -33,5 +31,4 @@ class SingleLabelClassificationDataPoint(BaseDataPoint):
             elif isinstance(label, int):
                 pass
             else:
-                raise ValueError(f"Labels must be either strings or integers ("
-                                 f"{type(label)})")
+                raise ValueError(f"Labels must be either strings or integers (" f"{type(label)})")
