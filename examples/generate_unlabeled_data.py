@@ -1,7 +1,8 @@
+import os
 import random
 
 from datasets import load_dataset
-from langchain.llms import OpenAI
+from haystack.nodes import PromptNode
 
 from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.prompt_templates import TextGenerationPrompt
@@ -17,8 +18,8 @@ def run_unlabeled_generation():
     support_examples = [TextDataPoint(text=sample["text"]) for sample in dataset]
 
     generation_prompt = TextGenerationPrompt()
-    llm = OpenAI(model_name="text-davinci-003")
-    generator = DatasetGenerator(llm)
+    prompt_node = PromptNode(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
+    generator = DatasetGenerator(prompt_node)
     generated_dataset = generator.generate(
         support_examples=support_examples,
         prompt_template=generation_prompt,
