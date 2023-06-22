@@ -24,7 +24,7 @@ class SequenceLabelingPrompt(AnnotationPrompt):
         self.tags = tags
         if task_description is None:
             task_description = (
-                f"Given a list of tokens, generate a list of annotations for every token with according to their label based on following tags: {self.formatted_tags(tags)}",
+                f"Given a list of tokens, generate a list of annotations for every token according to their label based on following tags: {self.formatted_tags(tags)}",
             )
         super().__init__(
             task_description=task_description,
@@ -45,7 +45,7 @@ class NamedEntityAnnotationPrompt(SequenceLabelingPrompt):
     def __init__(self, tags: Dict[str, int], **kwargs):
         super().__init__(
             tags,
-            task_description=f"Given a list of tokens, generate a list of annotations for every token with according to their entity based on following NER tags: {self.formatted_tags(tags)}",
+            task_description=f"Given a list of tokens, generate a list of annotations for every token according to their entity based on following NER tags: {self.formatted_tags(tags)}",
             **kwargs,
         )
 
@@ -54,7 +54,7 @@ class PartOfSpeechAnnotationPrompt(SequenceLabelingPrompt):
     def __init__(self, tags: Dict[str, int], **kwargs):
         super().__init__(
             tags,
-            task_description=f"Given a list of tokens, generate a list of annotations for every token with according to their entity based on following Part-of-Speech tags: {self.formatted_tags(tags)}",
+            task_description=f"Given a list of tokens, generate a list of annotations for every token according to their entity based on following Part-of-Speech tags: {self.formatted_tags(tags)}",
             **kwargs,
         )
 
@@ -63,6 +63,6 @@ class ChunkingAnnotationPrompt(SequenceLabelingPrompt):
     def __init__(self, tags: Dict[str, int], **kwargs):
         super().__init__(
             tags,
-            task_description=f"Given a list of tokens, generate a list of annotations for every token with according to their entity based on following Chunking tags: {self.formatted_tags(tags)}",
+            task_description=f"Given a list of tokens, generate a list of annotations for every token according to their entity based on following Chunking tags: {self.formatted_tags(tags)}",
             **kwargs,
         )
