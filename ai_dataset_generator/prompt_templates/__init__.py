@@ -1,4 +1,4 @@
-from .base import BasePrompt, AnnotationPrompt, GenerationPrompt
+from .base import AnnotationPrompt, BasePrompt, GenerationPrompt
 from .plain_text import TextGenerationPrompt
 from .question_answering import QuestionAnnotationPrompt, AnswerAnnotationPrompt, ContextAnnotationPrompt
 from .ner import NamedEntityAnnotationPrompt
