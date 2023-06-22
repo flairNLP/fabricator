@@ -40,6 +40,8 @@ def annotate_unlabeled_data():
         max_prompt_calls=1,
     )
 
+    print(generated_dataset)
+
 
 if __name__ == "__main__":
     annotate_unlabeled_data()

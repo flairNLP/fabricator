@@ -1,9 +1,6 @@
-import logging
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from ai_dataset_generator.task_templates.base import BaseDataPoint
-
-logger = logging.getLogger(__name__)
 
 
 class SingleLabelClassificationDataPoint(BaseDataPoint):
@@ -32,3 +29,7 @@ class SingleLabelClassificationDataPoint(BaseDataPoint):
                 pass
             else:
                 raise ValueError(f"Labels must be either strings or integers (" f"{type(label)})")
+
+    @property 
+    def attributes(self) -> Dict[str, Any]:
+        return {"text": self.text, "label": self.label}
