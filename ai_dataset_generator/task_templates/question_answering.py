@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from ai_dataset_generator.task_templates.base import BaseDataPoint
 
@@ -57,3 +57,12 @@ class ExtractiveQADataPoint(BaseDataPoint):
                 self.answer_start = -1
             else:
                 self.answer_start = answer_start
+    
+    @property
+    def attributes(self) -> Dict[str, Any]:
+        return {
+            "context": self.context,
+            "question": self.question,
+            "answer": self.answer,
+            "title": self.title,
+        }

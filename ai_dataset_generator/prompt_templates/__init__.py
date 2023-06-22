@@ -1,8 +1,7 @@
 from .base import AnnotationPrompt, BasePrompt, GenerationPrompt
 from .plain_text import TextGenerationPrompt
-from .question_answering import (AnswerAnnotationPrompt,
-                                 ContextAnnotationPrompt,
-                                 QuestionAnnotationPrompt)
+from .question_answering import QuestionAnnotationPrompt, AnswerAnnotationPrompt, ContextAnnotationPrompt
+from .ner import NamedEntityAnnotationPrompt
 
 __all__ = [
     "BasePrompt",
@@ -12,4 +11,5 @@ __all__ = [
     "QuestionAnnotationPrompt",
     "AnswerAnnotationPrompt",
     "ContextAnnotationPrompt",
+    "NamedEntityAnnotationPrompt",
 ]
