@@ -4,8 +4,8 @@ from datasets import load_dataset
 from langchain.llms import OpenAI
 
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.task_templates import ExtractiveQADataPoint
 from ai_dataset_generator.prompt_templates import AnswerAnnotationPrompt
+from ai_dataset_generator.task_templates import ExtractiveQADataPoint
 
 
 def annotate_unlabeled_data():
@@ -23,7 +23,9 @@ def annotate_unlabeled_data():
             context=sample["context"],
             answer=sample["answers"]["text"][0] if sample["answers"]["text"] else None,
             answer_start=sample["answers"]["answer_start"][0] if sample["answers"]["answer_start"] else None,
-        ) for sample in dataset]
+        )
+        for sample in dataset
+    ]
 
     unlabeled_examples, support_examples = extractive_qa_samples[:num_unlabeled], extractive_qa_samples[num_unlabeled:]
 
@@ -36,6 +38,7 @@ def annotate_unlabeled_data():
         prompt_template=prompt_template,
         max_prompt_calls=1,
     )
+
 
 if __name__ == "__main__":
     annotate_unlabeled_data()

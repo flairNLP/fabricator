@@ -4,8 +4,8 @@ from datasets import load_dataset
 from langchain.llms import OpenAI
 
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.task_templates import TextDataPoint
 from ai_dataset_generator.prompt_templates import TextGenerationPrompt
+from ai_dataset_generator.task_templates import TextDataPoint
 
 
 def run_unlabeled_generation():
@@ -24,6 +24,7 @@ def run_unlabeled_generation():
         prompt_template=generation_prompt,
         max_prompt_calls=1,
     )
+
 
 if __name__ == "__main__":
     run_unlabeled_generation()
