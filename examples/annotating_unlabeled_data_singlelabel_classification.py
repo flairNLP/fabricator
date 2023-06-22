@@ -1,12 +1,15 @@
+import logging
 import random
+import os
 
-from ai_dataset_generator.prompt_templates.single_label_classification import \
+from ai_dataset_generator.prompt_templates.classification import \
     AddSingleLabelAnnotationPrompt
-from ai_dataset_generator.task_templates.single_label_classification import \
+from ai_dataset_generator.task_templates.classification import \
     SingleLabelClassificationDataPoint
 from datasets import load_dataset
-from langchain.llms import OpenAI
-from loguru import logger
+from haystack.nodes import PromptNode
+
+logger = logging.getLogger(__name__)
 
 from ai_dataset_generator import DatasetGenerator
 
@@ -34,15 +37,17 @@ def annotate_unlabeled_data():
     )
 
     prompt_template = AddSingleLabelAnnotationPrompt(labels=all_labels)
-    llm = OpenAI(model_name="text-davinci-003")
-    generator = DatasetGenerator(llm)
+    # llm = OpenAI(model_name="text-davinci-003")
+
+    prompt_node = PromptNode(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
+    generator = DatasetGenerator(prompt_node)
     generated_dataset = generator.generate(
         unlabeled_examples=unlabeled_examples,
         support_examples=support_examples,
         prompt_template=prompt_template,
         max_prompt_calls=1,
     )
-    logger.info(generated_dataset)
+    print(generated_dataset)
 
 
 if __name__ == "__main__":
