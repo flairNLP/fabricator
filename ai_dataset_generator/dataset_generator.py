@@ -5,8 +5,8 @@ from typing import List, Optional
 
 from haystack.nodes import PromptNode, PromptTemplate
 
-from ai_dataset_generator.task_templates import BaseDataPoint, TextDataPoint
 from ai_dataset_generator.prompt_templates import BasePrompt
+from ai_dataset_generator.task_templates import BaseDataPoint, TextDataPoint
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +39,13 @@ class DatasetGenerator:
             input_examples = iter(unlabeled_examples)
 
         for prompt_call_idx, input_example in enumerate(input_examples, start=1):
+            # TODO @All we need ideally one example per class, don't do it purely
+            #  randomly, at least for text classification, but I guess also for NER etc
+            #  it would be more efficient to have some logic to select the examples
+            #  (while of course keeping as much randomness as possible)
             sampled_support_examples = random.sample(support_examples, support_examples_per_prompt)
             prompt = prompt_template.get_prompt(sampled_support_examples)
+
             invocation_context = prompt_template.format_input(input_example)
 
             examples = prompt_template.format_support_examples(sampled_support_examples)
@@ -49,6 +54,7 @@ class DatasetGenerator:
 
             pred = self.prompt_node.run(prompt_template=PromptTemplate(name="prompt_text", prompt_text=prompt_text),
                                         invocation_context=invocation_context)[0]['results'][0]
+            
             generated_samples.append(prompt_template.add_annotation_to_input(input_example, pred))
 
             if prompt_call_idx >= max_prompt_calls:
