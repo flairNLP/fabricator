@@ -1,15 +1,12 @@
 import os
 import random
-import sys
-
-sys.path.append("..")
 
 from datasets import load_dataset
 from haystack.nodes import PromptNode
 
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.task_templates import TextDataPoint
 from ai_dataset_generator.prompt_templates import TextGenerationPrompt
+from ai_dataset_generator.task_templates import TextDataPoint
 
 
 def run_unlabeled_generation():
@@ -24,12 +21,11 @@ def run_unlabeled_generation():
     prompt_node = PromptNode(model_name_or_path="gpt-3.5-turbo-0613", api_key=os.environ.get("OPENAI_API_KEY"))
     generator = DatasetGenerator(prompt_node)
     generated_dataset = generator.generate(
-        support_examples=support_examples,
-        prompt_template=generation_prompt,
-        max_prompt_calls=1,
+        support_examples=support_examples, prompt_template=generation_prompt, max_prompt_calls=1,
     )
 
     print(generated_dataset)
+
 
 if __name__ == "__main__":
     run_unlabeled_generation()

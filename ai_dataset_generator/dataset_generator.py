@@ -50,11 +50,17 @@ class DatasetGenerator:
 
             examples = prompt_template.format_support_examples(sampled_support_examples)
             formatted_examples = [prompt.example_prompt.format_prompt(**example).text for example in examples]
-            prompt_text = prompt.example_separator.join([prompt_template.task_description]+formatted_examples+[prompt_template.annotation_formatting_template])
+            prompt_text = prompt.example_separator.join(
+                [prompt_template.task_description]
+                + formatted_examples
+                + [prompt_template.annotation_formatting_template]
+            )
 
-            pred = self.prompt_node.run(prompt_template=PromptTemplate(name="prompt_text", prompt_text=prompt_text),
-                                        invocation_context=invocation_context)[0]['results'][0]
-            
+            pred = self.prompt_node.run(
+                prompt_template=PromptTemplate(name="prompt_text", prompt_text=prompt_text),
+                invocation_context=invocation_context,
+            )[0]["results"][0]
+
             generated_samples.append(prompt_template.add_annotation_to_input(input_example, pred))
 
             if prompt_call_idx >= max_prompt_calls:

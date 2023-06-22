@@ -5,8 +5,8 @@ from datasets import load_dataset
 from haystack.nodes import PromptNode
 
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.task_templates import ExtractiveQADataPoint
 from ai_dataset_generator.prompt_templates import AnnotationPrompt
+from ai_dataset_generator.task_templates import ExtractiveQADataPoint
 
 
 def annotation_with_custom_prompt():
@@ -15,7 +15,7 @@ def annotation_with_custom_prompt():
     total_examples = num_support + num_unlabeled
 
     dataset = load_dataset("squad_v2", split="train")
-    dataset = dataset.select(random.sample(range(len(dataset)), 2*total_examples))
+    dataset = dataset.select(random.sample(range(len(dataset)), 2 * total_examples))
 
     extractive_qa_samples = [
         ExtractiveQADataPoint(
@@ -24,7 +24,9 @@ def annotation_with_custom_prompt():
             context=sample["context"],
             answer=sample["answers"]["text"][0] if sample["answers"]["text"] else None,
             answer_start=sample["answers"]["answer_start"][0] if sample["answers"]["answer_start"] else None,
-        ) for sample in dataset]
+        )
+        for sample in dataset
+    ]
 
     # filter out samples without an answer
     extractive_qa_samples = [sample for sample in extractive_qa_samples if sample.answer is not None][:total_examples]
@@ -36,7 +38,7 @@ def annotation_with_custom_prompt():
         support_set_variables=["context", "question", "answer"],
         support_set_formatting_template="""Question: {question}\nAnswer: {answer}\nText: {context}""",
         annotation_variables=["question", "answer"],
-        annotation_formatting_template="""Question: {question}\nAnswer: {answer}\nText: """
+        annotation_formatting_template="""Question: {question}\nAnswer: {answer}\nText: """,
     )
 
     prompt_node = PromptNode(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
@@ -47,6 +49,7 @@ def annotation_with_custom_prompt():
         prompt_template=custom_annotation_prompt,
         max_prompt_calls=1,
     )
+
 
 if __name__ == "__main__":
     annotation_with_custom_prompt()

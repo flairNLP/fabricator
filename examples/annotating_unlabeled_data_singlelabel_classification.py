@@ -1,17 +1,18 @@
 import logging
-import random
 import os
+import random
 
+from datasets import load_dataset
+from haystack.nodes import PromptNode
+
+from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.prompt_templates.classification import \
     AddSingleLabelAnnotationPrompt
 from ai_dataset_generator.task_templates.classification import \
     SingleLabelClassificationDataPoint
-from datasets import load_dataset
-from haystack.nodes import PromptNode
 
 logger = logging.getLogger(__name__)
 
-from ai_dataset_generator import DatasetGenerator
 
 
 def annotate_unlabeled_data():
@@ -21,14 +22,10 @@ def annotate_unlabeled_data():
 
     dataset = load_dataset("imdb", split="train")
     dataset = dataset.select(random.sample(range(len(dataset)), total_examples))
-    all_labels = list(set(dataset['label']))
+    all_labels = list(set(dataset["label"]))
 
     sl_classification_samples = [
-        SingleLabelClassificationDataPoint(
-            text=sample["text"],
-            label=sample["label"],
-        )
-        for sample in dataset
+        SingleLabelClassificationDataPoint(text=sample["text"], label=sample["label"],) for sample in dataset
     ]
 
     unlabeled_examples, support_examples = (
