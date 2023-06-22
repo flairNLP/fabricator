@@ -1,3 +1,4 @@
 datasets
 langchain
 openai
+loguru
