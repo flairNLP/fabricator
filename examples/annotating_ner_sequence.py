@@ -1,17 +1,13 @@
 import random
-import sys
-
-sys.path.append("..")
+import os
 
 from datasets import load_dataset
-from langchain.llms import OpenAI
-from dotenv import load_dotenv
+from haystack.nodes import PromptNode
 
 from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.task_templates import SequenceLabelDataPoint
 from ai_dataset_generator.prompt_templates import NamedEntityAnnotationPrompt
 
-load_dotenv()
 
 
 def annotate_ner_data():
@@ -39,8 +35,8 @@ def annotate_ner_data():
     unlabeled_examples, support_examples = ner_samples[:num_unlabeled], ner_samples[num_unlabeled:]
 
     prompt_template = NamedEntityAnnotationPrompt(tags=ner_tags)
-    llm = OpenAI(model_name="text-davinci-003")
-    generator = DatasetGenerator(llm)
+    prompt_node = PromptNode(model_name_or_path="text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
+    generator = DatasetGenerator(prompt_node)
     generated_dataset = generator.generate(
         unlabeled_examples=unlabeled_examples,
         support_examples=support_examples,
