@@ -1,13 +1,12 @@
-import random
 import os
 
 from datasets import load_dataset
 from haystack.nodes import PromptNode
 
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.task_templates import SequenceLabelDataPoint
+from ai_dataset_generator.dataset_loader.sampler import ml_mc_sampler
 from ai_dataset_generator.prompt_templates import NamedEntityAnnotationPrompt
-
+from ai_dataset_generator.task_templates import SequenceLabelDataPoint
 
 
 def annotate_ner_data():
@@ -16,7 +15,8 @@ def annotate_ner_data():
     total_examples = num_support + num_unlabeled
 
     dataset = load_dataset("conll2003", split="train")
-    dataset = dataset.select(random.sample(range(len(dataset)), total_examples))
+
+    dataset = ml_mc_sampler(dataset, "pos_tags", total_examples)
 
     # Get NER tags and apply to datapoints
 
@@ -24,7 +24,7 @@ def annotate_ner_data():
     features = dataset.features
     feature_tags = features[tags_key].feature.names
     ner_tags = {tag: idx for idx, tag in enumerate(list(feature_tags))}
-    print(ner_tags)
+
     ner_samples = [
         SequenceLabelDataPoint(tokens=sample["tokens"], annotations=sample[tags_key], tags=ner_tags)
         for sample in dataset
