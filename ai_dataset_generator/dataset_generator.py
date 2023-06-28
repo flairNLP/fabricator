@@ -1,14 +1,13 @@
 import logging
 import random
 from abc import abstractmethod
-from typing import Optional, Union, Tuple, Callable
+from typing import Optional, Union, Tuple
 
 from datasets import Dataset
 from haystack.nodes import PromptNode
 from haystack.nodes import PromptTemplate as HaystackPromptTemplate
 
 from ai_dataset_generator.prompt_templates import RefactoredBasePrompt
-from ai_dataset_generator.task_templates import BaseDataPoint
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +15,6 @@ logger = logging.getLogger(__name__)
 class DatasetGenerator:
     def __init__(self, prompt_node: PromptNode):
         self.prompt_node = prompt_node
-
-    @abstractmethod
-    def postprocess_prompt(self, pred: str) -> BaseDataPoint:
-        pass
 
     def generate(
             self,
