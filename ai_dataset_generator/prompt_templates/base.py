@@ -1,114 +1,106 @@
-from typing import List, Dict
+from typing import List, Dict, Union, Optional
+from datasets import Dataset
 
 from langchain.prompts import FewShotPromptTemplate, PromptTemplate
 
 from ai_dataset_generator.task_templates.base import BaseDataPoint
 
 
-class BasePrompt:
+class RefactoredBasePrompt:
+
     def __init__(
         self,
-        task_description: str,
-        support_set_variables: List[str],
-        support_set_formatting_template: str,
-        annotation_variables: List[str],
-        annotation_formatting_template: str,
-        target_variable: List[str],
+        input_variables: Union[List[str], str],
+        output_format: str = "text",
+        example_separator: str = "\n",
+        target_variable: Optional[str] = None,
+        task_description: Optional[str] = None,
+        examples_formatting_template: Optional[str] = None,
+        target_formatting_template: Optional[str] = None,
+        classification_options: Optional[Union[Dict[str, str], Dict[int, str]]] = None,
     ):
-        self.task_description = task_description
-        self.support_set_variables = support_set_variables
-        self.support_set_formatting_template = support_set_formatting_template
-        self.annotation_variables = annotation_variables
-        self.annotation_formatting_template = annotation_formatting_template
+        # Check output format is valid
+        if not output_format in ["text", "single_label_classification", "multi_label_classification", "token_classification"]:
+            raise ValueError(f'Format "{output_format}" is not supported. Choose one of "text", "single_label", "multi_label", "token_classification".')
+
+        # Check, if output format is for classification tasks, that required target_variable and classification_label_options are set
+        if target_variable is None and output_format != "text":
+            raise ValueError(f'When creating unlabeled data, you cannot use any other output_format than text.')
+
+        # Check if creating unlabeled data, that only one input_variable is passed
+        if target_variable is None and output_format == "text":
+            assert len(input_variables) == 1, "When creating unlabeled data, you can only use one input_variable."
+
+        # Check, if output format is for classification tasks, that required classification_label_options are set
+        if "classification" in output_format and classification_options is None:
+            raise ValueError(f'When using output format for classification, you need to specify classification_options.')
+
+        # If only one input_variable is passed, convert it to a list
+        if isinstance(input_variables, str):
+            input_variables = [input_variables]
+        self.input_variables = input_variables
         self.target_variable = target_variable
 
-    def get_support_template(self):
-        return PromptTemplate(
-            input_variables=self.support_set_variables, template=self.support_set_formatting_template,
+        if "classification" in output_format:
+            formatted_classification_options = ", ".join([f"{k}: {v}" for k, v in classification_options.items()])
+            if output_format == "single_label_classification":
+                classification_suffix = f" Your prediction must be exactly one of the following labels: {formatted_classification_options}."
+            elif output_format == "multi_label_classification":
+                classification_suffix = f" Your prediction must be zero or more of the following labels: {formatted_classification_options}."
+            elif output_format == "token_classification":
+                classification_suffix = f" Your prediction must be a list of labels, one for each token. Each label must be one of the following labels: {formatted_classification_options}."
+        else:
+            classification_suffix = ""
+        self.task_description = task_description + classification_suffix
+
+        # If target_variable is passed, convert it to a list
+        # variables_for_examples are the column names for the support set examples
+        if target_variable is not None:
+            self.variables_for_examples = input_variables + [target_variable]
+        else:
+            self.variables_for_examples = input_variables
+
+        self.example_separator = example_separator
+        # Create prompt template for support examples
+        if examples_formatting_template is None:
+            examples_formatting_template = self.example_separator.join([f"{var.capitalize()}: {{{var}}}" for var in self.variables_for_examples])
+
+        self.example_prompt = PromptTemplate(
+            input_variables=self.variables_for_examples, template=examples_formatting_template,
         )
 
-    def format_support_examples(self, support_examples: List[BaseDataPoint]) -> List[Dict[str, str]]:
-        return [
-            {attr: value for attr, value in vars(support_example).items() if attr in self.support_set_variables}
-            for support_example in support_examples
-        ]
+        # Create format template for variable annotation or unlabeled generation
+        if target_formatting_template is None:
+            # Check if we generate unlabeled data, we checked above that only one input_variable is passed
+            if target_variable is None and output_format == "text":
+                prediction_suffix = ""
+            else:
+                prediction_suffix = f"{target_variable.capitalize()}: "
+            self.target_formatting_template = "\n".join([f"{var.capitalize()}: {{{var}}}" for var in input_variables] + [prediction_suffix])
+        else:
+            self.target_formatting_template = target_formatting_template
 
-    def format_variables(self, variable: str, value: str) -> Dict[str, str]:
-        return {variable: value}
-
-    def format_input(self, input_example: BaseDataPoint) -> Dict[str, str]:
-        formatted_inputs = {}
-
-        for attr, value in input_example.attributes.items():
-            if attr in self.annotation_variables:
-                formatted_input_variable = self.format_variables(attr, value)
-                assert len(formatted_input_variable) == 1, "A unformatted input can only return one formatted input"
-                formatted_inputs.update(formatted_input_variable)
-
-        return formatted_inputs
-
-    def add_annotation_to_input(self, input_example: BaseDataPoint, prediction: str) -> BaseDataPoint:
-        cls = type(input_example)
-        constructor_args = {
-            attr: value for attr, value in input_example.attributes.items() if attr in self.annotation_variables
+    @staticmethod
+    def filter_example_by_columns(example: Dict[str, str], columns: List[str]) -> Dict[str, str]:
+        filtered_example = {
+            key: value
+            for key, value in example.items()
+            if key in columns
         }
-        constructor_args[self.target_variable[0]] = prediction.strip()
-        return cls(**constructor_args)
+        return filtered_example
 
-    def get_prompt(self, support_examples: List[BaseDataPoint]) -> FewShotPromptTemplate:
-        return FewShotPromptTemplate(
-            examples=self.format_support_examples(support_examples),
-            prefix=self.task_description,
-            example_prompt=self.get_support_template(),
-            suffix=self.annotation_formatting_template,
-            input_variables=self.annotation_variables,
+    def filter_examples_by_columns(self, dataset: Dataset, columns: List[str]) -> List[Dict[str, str]]:
+        filtered_inputs = []
+        for example in dataset:
+            filtered_inputs.append(self.filter_example_by_columns(example, columns))
+        return filtered_inputs
+
+    def get_prompt_text(self, examples: Dataset) -> str:
+        examples = self.filter_examples_by_columns(examples, self.variables_for_examples)
+        formatted_examples = [self.example_prompt.format_prompt(**example).text for example in examples]
+        prompt_text = self.example_separator.join(
+            [self.task_description]
+            + formatted_examples
+            + [self.target_formatting_template]
         )
-
-
-class AnnotationPrompt(BasePrompt):
-    def __init__(
-        self,
-        task_description: str,
-        support_set_variables: List[str],
-        support_set_formatting_template: str,
-        annotation_variables: List[str],
-        annotation_formatting_template: str,
-    ):
-        target_variable = list(set(support_set_variables) - set(annotation_variables))
-        if not len(target_variable) == 1:
-            raise RuntimeError(
-                f"Exactly one target variable must be specified. "
-                f"The difference between the support set variables {support_set_variables} and "
-                f"the annotation variables {annotation_variables} must be exactly one variable."
-            )
-
-        super().__init__(
-            task_description=task_description,
-            support_set_variables=support_set_variables,
-            support_set_formatting_template=support_set_formatting_template,
-            annotation_variables=annotation_variables,
-            annotation_formatting_template=annotation_formatting_template,
-            target_variable=target_variable,
-        )
-
-
-class GenerationPrompt(BasePrompt):
-    def __init__(
-        self,
-        task_description: str,
-        support_set_variables: List[str],
-        support_set_formatting_template: str,
-        annotation_formatting_template: str,
-    ):
-        if not len(support_set_variables) == 1:
-            raise RuntimeError(f"You cannot specify more than one variable for a generation task. ")
-
-        super().__init__(
-            task_description=task_description,
-            support_set_variables=support_set_variables,
-            support_set_formatting_template=support_set_formatting_template,
-            annotation_variables=support_set_variables,
-            annotation_formatting_template=annotation_formatting_template.strip()
-            + f" {{{ support_set_variables[0] }}}",
-            target_variable=support_set_variables,
-        )
+        return prompt_text
