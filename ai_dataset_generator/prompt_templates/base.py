@@ -1,9 +1,7 @@
 from typing import List, Dict, Union, Optional
 from datasets import Dataset
 
-from langchain.prompts import FewShotPromptTemplate, PromptTemplate
-
-from ai_dataset_generator.task_templates.base import BaseDataPoint
+from langchain.prompts import PromptTemplate
 
 
 class RefactoredBasePrompt:

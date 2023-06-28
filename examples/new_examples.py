@@ -113,6 +113,7 @@ def generate_annotations():
     )
     print()
 
+
 if __name__ == "__main__":
     #prompt_for_unlabeled()
     #prompt_for_annotation()
