@@ -30,6 +30,14 @@ class DatasetGenerator:
             field in support_examples.column_names for field in prompt_template.variables_for_examples
         ), "Not all required variables of the prompt template occur in the support examples."
 
+        if unlabeled_examples is None:
+            assert (
+                len(prompt_template.input_variables) == 1
+            ), "When creating unlabeled data, you can only use one input_variable."
+            assert isinstance(
+                prompt_template.input_variables[0], str
+            ), "The input_variable must be a string, indicating the column to generate unlabeled data for."
+
         generated_dataset = {}
         original_dataset = {}
 
