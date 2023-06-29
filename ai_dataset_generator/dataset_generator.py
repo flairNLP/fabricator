@@ -1,12 +1,12 @@
 import logging
 import random
-from abc import abstractmethod
-from typing import List, Optional
+from typing import Optional, Union, Tuple
 
-from haystack.nodes import PromptNode, PromptTemplate
+from datasets import Dataset
+from haystack.nodes import PromptNode
+from haystack.nodes import PromptTemplate as HaystackPromptTemplate
 
-from ai_dataset_generator.prompt_templates import BasePrompt
-from ai_dataset_generator.task_templates import BaseDataPoint, TextDataPoint
+from ai_dataset_generator.prompts import DataGenerationPrompt
 
 logger = logging.getLogger(__name__)
 
@@ -15,29 +15,36 @@ class DatasetGenerator:
     def __init__(self, prompt_node: PromptNode):
         self.prompt_node = prompt_node
 
-    @abstractmethod
-    def postprocess_prompt(self, pred: str) -> BaseDataPoint:
-        pass
-
     def generate(
         self,
-        support_examples: List[BaseDataPoint],
-        prompt_template: BasePrompt,
-        unlabeled_examples: Optional[List[BaseDataPoint]] = None,
+        support_examples: Dataset,
+        prompt_template: DataGenerationPrompt,
+        unlabeled_examples: Optional[Dataset] = None,
         support_examples_per_prompt: int = 2,
         num_samples_to_generate: int = 10,
         max_prompt_calls: int = 10,
-    ) -> List[BaseDataPoint]:
+        return_original_dataset: bool = False,
+    ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
         # Check if required variables of the prompt template occure in every data point
-        # TODO: PHA: This might get expensive with big datasets
-        for required_attribute in prompt_template.support_set_variables:
-            if not all(required_attribute in sample.attributes.keys() for sample in support_examples):
-                raise RuntimeError("Not all samples have the required attributes for the generation prompt template.")
-
-        generated_samples: List[BaseDataPoint] = []
+        assert all(
+            field in support_examples.column_names for field in prompt_template.variables_for_examples
+        ), "Not all required variables of the prompt template occur in the support examples."
 
         if unlabeled_examples is None:
-            input_examples = iter(max(max_prompt_calls, num_samples_to_generate) * [TextDataPoint(text="")])
+            assert (
+                len(prompt_template.input_variables) == 1
+            ), "When creating unlabeled data, you can only use one input_variable."
+            assert isinstance(
+                prompt_template.input_variables[0], str
+            ), "The input_variable must be a string, indicating the column to generate unlabeled data for."
+
+        generated_dataset = {}
+        original_dataset = {}
+
+        if unlabeled_examples is None:
+            input_examples = iter(
+                max(max_prompt_calls, num_samples_to_generate) * [{prompt_template.input_variables[0]: ""}]
+            )
         else:
             input_examples = iter(unlabeled_examples)
 
@@ -46,32 +53,54 @@ class DatasetGenerator:
             #  randomly, at least for text classification, but I guess also for NER etc
             #  it would be more efficient to have some logic to select the examples
             #  (while of course keeping as much randomness as possible)
-            sampled_support_examples = random.sample(support_examples, support_examples_per_prompt)
-            prompt = prompt_template.get_prompt(sampled_support_examples)
+            sampled_support_indices = random.sample(range(len(support_examples)), support_examples_per_prompt)
+            sampled_support_examples = support_examples.select(sampled_support_indices)
 
-            invocation_context = prompt_template.format_input(input_example)
-
-            examples = prompt_template.format_support_examples(sampled_support_examples)
-            formatted_examples = [prompt.example_prompt.format_prompt(**example).text for example in examples]
-            prompt_text = prompt.example_separator.join(
-                [prompt_template.task_description]
-                + formatted_examples
-                + [prompt_template.annotation_formatting_template]
+            prompt_text = prompt_template.get_prompt_text(sampled_support_examples)
+            invocation_context = prompt_template.filter_example_by_columns(
+                input_example, prompt_template.input_variables
             )
 
             pred = self.prompt_node.run(
-                prompt_template=PromptTemplate(name="prompt_text", prompt_text=prompt_text),
+                prompt_template=HaystackPromptTemplate(name="prompt_text", prompt_text=prompt_text),
                 invocation_context=invocation_context,
-            )[0]["results"][0]
+            )[0]["results"]
 
-            generated_samples.append(prompt_template.add_annotation_to_input(input_example, pred))
+            if len(pred) == 1:
+                pred = pred[0]
+
+            if prompt_template.target_variable is not None:
+                generated_sample = prompt_template.filter_example_by_columns(
+                    input_example, prompt_template.input_variables
+                )
+                for key, value in generated_sample.items():
+                    generated_dataset.setdefault(key, []).append(value)
+
+                if type(pred) is not type(input_example[prompt_template.target_variable]):
+                    try:
+                        pred = type(input_example[prompt_template.target_variable])(pred)
+                    except TypeError:
+                        continue
+                generated_dataset.setdefault(prompt_template.target_variable, []).append(pred)
+            else:
+                generated_dataset.setdefault(prompt_template.input_variables[0], []).append(pred)
+
+            if return_original_dataset:
+                for key, value in input_example.items():
+                    original_dataset.setdefault(key, []).append(value)
 
             if prompt_call_idx >= max_prompt_calls:
                 logger.info(f"Reached maximum number of prompt calls ({max_prompt_calls}).")
                 break
 
-            if len(generated_samples) >= num_samples_to_generate:
+            if len(generated_dataset) >= num_samples_to_generate:
                 logger.info(f"Generated {num_samples_to_generate} samples.")
                 break
 
-        return generated_samples
+        generated_dataset = Dataset.from_dict(generated_dataset)
+        original_dataset = Dataset.from_dict(original_dataset)
+
+        if return_original_dataset:
+            return generated_dataset, original_dataset
+        else:
+            return generated_dataset
