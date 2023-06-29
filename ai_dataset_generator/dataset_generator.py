@@ -16,24 +16,27 @@ class DatasetGenerator:
         self.prompt_node = prompt_node
 
     def generate(
-            self,
-            support_examples: Dataset,
-            prompt_template: DataGenerationPrompt,
-            unlabeled_examples: Optional[Dataset] = None,
-            support_examples_per_prompt: int = 2,
-            num_samples_to_generate: int = 10,
-            max_prompt_calls: int = 10,
-            return_original_dataset: bool = False,
+        self,
+        support_examples: Dataset,
+        prompt_template: DataGenerationPrompt,
+        unlabeled_examples: Optional[Dataset] = None,
+        support_examples_per_prompt: int = 2,
+        num_samples_to_generate: int = 10,
+        max_prompt_calls: int = 10,
+        return_original_dataset: bool = False,
     ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
         # Check if required variables of the prompt template occure in every data point
-        assert all(field in support_examples.column_names for field in prompt_template.variables_for_examples), \
-            "Not all required variables of the prompt template occur in the support examples."
+        assert all(
+            field in support_examples.column_names for field in prompt_template.variables_for_examples
+        ), "Not all required variables of the prompt template occur in the support examples."
 
         generated_dataset = {}
         original_dataset = {}
 
         if unlabeled_examples is None:
-            input_examples = iter(max(max_prompt_calls, num_samples_to_generate) * [{prompt_template.input_variables[0]: ""}])
+            input_examples = iter(
+                max(max_prompt_calls, num_samples_to_generate) * [{prompt_template.input_variables[0]: ""}]
+            )
         else:
             input_examples = iter(unlabeled_examples)
 
@@ -46,8 +49,9 @@ class DatasetGenerator:
             sampled_support_examples = support_examples.select(sampled_support_indices)
 
             prompt_text = prompt_template.get_prompt_text(sampled_support_examples)
-            invocation_context = prompt_template.filter_example_by_columns(input_example,
-                                                                           prompt_template.input_variables)
+            invocation_context = prompt_template.filter_example_by_columns(
+                input_example, prompt_template.input_variables
+            )
 
             pred = self.prompt_node.run(
                 prompt_template=HaystackPromptTemplate(name="prompt_text", prompt_text=prompt_text),
@@ -58,7 +62,9 @@ class DatasetGenerator:
                 pred = pred[0]
 
             if prompt_template.target_variable is not None:
-                generated_sample = prompt_template.filter_example_by_columns(input_example, prompt_template.input_variables)
+                generated_sample = prompt_template.filter_example_by_columns(
+                    input_example, prompt_template.input_variables
+                )
                 for key, value in generated_sample.items():
                     generated_dataset.setdefault(key, []).append(value)
 
