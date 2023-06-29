@@ -3,6 +3,8 @@ from datasets import Dataset
 
 from langchain.prompts import PromptTemplate
 
+ClassificationLabels = Union[Dict[str, str], Dict[int, str]]
+
 
 class DataGenerationPrompt:
     def __init__(
@@ -14,7 +16,7 @@ class DataGenerationPrompt:
         task_description: Optional[str] = None,
         examples_formatting_template: Optional[str] = None,
         target_formatting_template: Optional[str] = None,
-        classification_options: Optional[Union[Dict[str, str], Dict[int, str]]] = None,
+        classification_labels: Optional[ClassificationLabels] = None,
     ):
         # Check output format is valid
         if not output_format in [
@@ -36,9 +38,9 @@ class DataGenerationPrompt:
             assert len(input_variables) == 1, "When creating unlabeled data, you can only use one input_variable."
 
         # Check, if output format is for classification tasks, that required classification_label_options are set
-        if "classification" in output_format and classification_options is None:
+        if "classification" in output_format and classification_labels is None:
             raise ValueError(
-                f"When using output format for classification, you need to specify classification_options."
+                f"When using output format for classification, you need to specify classification_labels."
             )
 
         # If only one input_variable is passed, convert it to a list
@@ -48,13 +50,13 @@ class DataGenerationPrompt:
         self.target_variable = target_variable
 
         if "classification" in output_format:
-            formatted_classification_options = ", ".join([f"{k}: {v}" for k, v in classification_options.items()])
+            formatted_classification_labels = ", ".join([f"{k}: {v}" for k, v in classification_labels.items()])
             if output_format == "single_label_classification":
-                classification_suffix = f" Your prediction must be exactly one of the following labels: {formatted_classification_options}."
+                classification_suffix = f" Your prediction must be exactly one of the following labels: {formatted_classification_labels}."
             elif output_format == "multi_label_classification":
-                classification_suffix = f" Your prediction must be zero or more of the following labels: {formatted_classification_options}."
+                classification_suffix = f" Your prediction must be zero or more of the following labels: {formatted_classification_labels}."
             elif output_format == "token_classification":
-                classification_suffix = f" Your prediction must be a list of labels, one for each token. Each label must be one of the following labels: {formatted_classification_options}."
+                classification_suffix = f" Your prediction must be a list of labels, one for each token. Each label must be one of the following labels: {formatted_classification_labels}."
         else:
             classification_suffix = ""
         self.task_description = task_description + classification_suffix

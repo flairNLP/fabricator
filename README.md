@@ -67,7 +67,6 @@ generated_dataset.push_to_hub("your-first-generated-dataset")
 Create some prompt to annotate unlabeled data using few-shot examples:
 
 ```python
-import os
 from datasets import load_dataset
 from ai_dataset_generator.prompts import DataGenerationPrompt
 
@@ -83,7 +82,7 @@ prompt = DataGenerationPrompt(
     input_variables=input_variables,
     output_format=output_format,
     target_variable=target_variable,
-    classification_options=idx2label,
+    classification_labels=idx2label,
     task_description="Classify the review whether it's positive or negative",
 )
 raw_prompt = prompt.get_prompt_text(fewshot_examples)
