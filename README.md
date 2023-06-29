@@ -23,7 +23,7 @@ Create some prompt to generate unlabeled data with fewshot examples:
 
 ```python
 from datasets import load_dataset
-from ai_dataset_generator import DataGenerationPrompt
+from ai_dataset_generator.prompts import DataGenerationPrompt
 
 dataset = load_dataset("imdb", split="train")
 fewshot_examples = dataset.select([1, 2, 3])
@@ -67,6 +67,7 @@ generated_dataset.push_to_hub("your-first-generated-dataset")
 Create some prompt to annotate unlabeled data using few-shot examples:
 
 ```python
+import os
 from datasets import load_dataset
 from ai_dataset_generator.prompts import DataGenerationPrompt
 
@@ -104,6 +105,7 @@ Label:
 Use our dataset generator to produce datasets and upload to huggingface hub.
 
 ```python
+import os
 from haystack.nodes import PromptNode
 from ai_dataset_generator import DatasetGenerator
 
