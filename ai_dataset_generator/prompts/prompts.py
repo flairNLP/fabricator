@@ -4,7 +4,7 @@ from datasets import Dataset
 from langchain.prompts import PromptTemplate
 
 
-class RefactoredBasePrompt:
+class DataGenerationPrompt:
 
     def __init__(
         self,

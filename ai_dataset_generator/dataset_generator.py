@@ -1,13 +1,12 @@
 import logging
 import random
-from abc import abstractmethod
 from typing import Optional, Union, Tuple
 
 from datasets import Dataset
 from haystack.nodes import PromptNode
 from haystack.nodes import PromptTemplate as HaystackPromptTemplate
 
-from ai_dataset_generator.prompt_templates import RefactoredBasePrompt
+from ai_dataset_generator.prompts import DataGenerationPrompt
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ class DatasetGenerator:
     def generate(
             self,
             support_examples: Dataset,
-            prompt_template: RefactoredBasePrompt,
+            prompt_template: DataGenerationPrompt,
             unlabeled_examples: Optional[Dataset] = None,
             support_examples_per_prompt: int = 2,
             num_samples_to_generate: int = 10,
