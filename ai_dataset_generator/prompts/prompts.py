@@ -52,7 +52,9 @@ class DataGenerationPrompt:
         if "classification" in output_format:
             formatted_classification_labels = ", ".join([f"{k}: {v}" for k, v in classification_labels.items()])
             if output_format == "single_label_classification":
-                classification_suffix = f" Your prediction must be exactly one of the following labels: {formatted_classification_labels}."
+                classification_suffix = (
+                    f" Your prediction must be exactly one of the following labels: {formatted_classification_labels}."
+                )
             elif output_format == "multi_label_classification":
                 classification_suffix = f" Your prediction must be zero or more of the following labels: {formatted_classification_labels}."
             elif output_format == "token_classification":
