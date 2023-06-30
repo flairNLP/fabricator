@@ -2,7 +2,7 @@ import unittest
 
 from datasets import load_dataset
 
-from ai_dataset_generator.samplers.sampler import random_sampler, single_label_task_sampler, ml_mc_sampler
+from ai_dataset_generator.samplers.samplers import random_sampler, single_label_task_sampler, ml_mc_sampler
 
 
 def _flatten(l):
