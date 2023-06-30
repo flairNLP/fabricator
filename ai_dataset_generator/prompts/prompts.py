@@ -46,11 +46,14 @@ class DataGenerationPrompt:
         # If only one input_variable is passed, convert it to a list
         if isinstance(input_variables, str):
             input_variables = [input_variables]
+
         self.input_variables = input_variables
         self.target_variable = target_variable
 
+        classification_suffix = ""
+
         if "classification" in output_format:
-            formatted_classification_labels = ", ".join([f"{k}: {v}" for k, v in classification_labels.items()])
+            formatted_classification_labels = ", ".join([f"{k}: {v}" for k, v in classification_labels.items()]) # type: ignore
             if output_format == "single_label_classification":
                 classification_suffix = (
                     f" Your prediction must be exactly one of the following labels: {formatted_classification_labels}."
@@ -59,8 +62,7 @@ class DataGenerationPrompt:
                 classification_suffix = f" Your prediction must be zero or more of the following labels: {formatted_classification_labels}."
             elif output_format == "token_classification":
                 classification_suffix = f" Your prediction must be a list of labels, one for each token. Each label must be one of the following labels: {formatted_classification_labels}."
-        else:
-            classification_suffix = ""
+
         self.task_description = task_description + classification_suffix
 
         # If target_variable is passed, convert it to a list
