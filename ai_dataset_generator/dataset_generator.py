@@ -6,7 +6,7 @@ from datasets import Dataset
 from haystack.nodes import PromptNode
 from haystack.nodes import PromptTemplate as HaystackPromptTemplate
 
-from ai_dataset_generator.prompts import DataGenerationPrompt
+from ai_dataset_generator.prompts.base import LLMPrompt
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class DatasetGenerator:
     def generate(
         self,
         support_examples: Dataset,
-        prompt_template: DataGenerationPrompt,
+        prompt_template: LLMPrompt,
         unlabeled_examples: Optional[Dataset] = None,
         support_examples_per_prompt: int = 2,
         num_samples_to_generate: int = 10,
