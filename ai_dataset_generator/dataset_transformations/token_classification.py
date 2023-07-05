@@ -7,7 +7,7 @@ from spacy.vocab import Vocab
 from spacy.tokens import Doc
 from spacy.training import iob_to_biluo, biluo_tags_to_offsets, offsets_to_biluo_tags, biluo_to_iob
 
-
+# These are fixed for encoding the prompt and decoding the output of the LLM
 label_seperator = "\n"
 label2entity_seperator = "->"
 entity_seperator = ", "
@@ -16,6 +16,17 @@ entity_seperator = ", "
 def token_labels_to_spans(
     dataset: Dataset, token_column: str, label_column: str, id2label: Dict
 ) -> Tuple[Dataset, List[str]]:
+    """Converts token level labels to spans. This is useful for NER tasks to prompt the LLM with natural language labels.
+
+    Args:
+        dataset (Dataset): huggingface Dataset with token level labels
+        token_column (str): name of the column with the tokens
+        label_column (str): name of the column with the token level labels
+        id2label (Dict): mapping from label ids to label names
+
+    Returns:
+        Tuple[Dataset, List[str]]: huggingface Dataset with span level labels and list of possible labels for the prompt
+    """
     new_label_column = f"{label_column}_natural_language"
     label_options = list(set([label.replace("B-", "").replace("I-", "") for label in id2label.values()]))
     label_options.remove("O")
@@ -43,6 +54,17 @@ def token_labels_to_spans(
 
 
 def spans_to_token_labels(dataset, token_column, label_column, id2label: Dict) -> Dataset:
+    """Converts span level labels to token level labels. This is useful for NER tasks to decode the output of the LLM.
+
+    Args:
+        dataset (Dataset): huggingface Dataset with span level labels
+        token_column (str): name of the column with the tokens
+        label_column (str): name of the column with the span level labels
+        id2label (Dict): mapping from label ids to label names
+
+    Returns:
+        Dataset: huggingface Dataset with token level labels in BIO format
+    """
     new_label_column = f"{label_column}_tags"
     label2id = {v: k for k, v in id2label.items()}
 
@@ -92,6 +114,16 @@ def spans_to_token_labels(dataset, token_column, label_column, id2label: Dict) -
 
 
 def replace_token_labels(id2label: Dict, expanded_labels: Dict) -> Dict:
+    """Replaces token level labels with expanded labels, i.e. label PER should be expanded to PERSON.
+    Values of id2label need to match keys of expanded_labels.
+
+    Args:
+        id2label (Dict): mapping from label ids to label names
+        expanded_labels (Dict): mapping from label names to expanded label names
+
+    Returns:
+        Dict: mapping from label ids to label names with expanded labels
+    """
     replaced_id2label = {}
     for idx, tag in id2label.items():
         if tag.startswith("B-") or tag.startswith("I-"):

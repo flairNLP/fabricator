@@ -1,10 +1,9 @@
-from .annotate_unlabeled_data import *
-from .generate_unlabeled_data import *
+from .label_annotation import *
+from .data_generation import *
 
 __all__ = [
     "GenerateUnlabeledDataPrompt",
     "TextLabelPrompt",
-    "SingleLabelPrompt",
-    "MultiLabelPrompt",
+    "ClassLabelPrompt",
     "TokenLabelPrompt",
 ]
