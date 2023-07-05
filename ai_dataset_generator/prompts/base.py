@@ -23,6 +23,42 @@ class LLMPrompt:
         example_separator: str = "\n\n",
         inner_example_separator: str = "\n",
     ):
+        """Base class for prompt generation. This class formats the prompt for the fewshot / support set examples and the target variable
+        such that the dataset generator can simply put in the invocation context.
+
+        Args:
+            input_variables (Union[List[str], str]): List or string of input variables / column names for the fewshot / support set examples
+            target_variable (Optional[str], optional): Target variable / column name. The column is annotated by the LLM. Defaults to None.
+            task_description (Optional[str], optional): Task description for the prompt (prefix). Defaults to None.
+            label_options (Optional[ClassificationOptions], optional): Label options for the LLM to choose from. Defaults to None.
+            examples_formatting_template (Optional[str], optional): Template for formatting the fewshot / support set examples. Defaults to None.
+            target_formatting_template (Optional[str], optional): Template for formatting the target variable. Defaults to None.
+            example_separator (str, optional): Separator between the fewshot / support set examples. Defaults to "\n\n".
+            inner_example_separator (str, optional): Separator in-between a single fewshot examples. Defaults to "\n".
+
+        Raises:
+            AttributeError: If label_options is not a dict or list
+            KeyError: If the task_description cannot be formatted with the variable 'label_options'
+
+        Examples:
+            >>> from datasets import load_dataset
+            >>> from ai_dataset_generator.prompts import ClassLabelPrompt
+            >>> input_variable = "text"
+            >>> target_variable = "coarse_label"
+            >>> 
+            >>> dataset = load_dataset("trec", split="train")
+            >>> id2label = {k: v for k, v in enumerate(dataset.features[target_variable].names)}
+            >>> fewshot_examples = dataset.select([1,2,3])
+            >>>
+            >>> prompt = ClassLabelPrompt(
+            >>>    input_variables=input_variable,
+            >>>    target_variable=target_variable,
+            >>>    label_options=id2label,
+            >>> )
+            >>>
+            >>> raw_prompt = prompt.get_prompt_text(fewshot_examples)
+            >>> print(raw_prompt)
+        """
         if label_options is not None:
             if "{label_options}" not in task_description:
                 logger.warning(

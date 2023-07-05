@@ -9,6 +9,16 @@ class GenerateUnlabeledDataPrompt(LLMPrompt):
         task_description: str = "Generate similar texts. Your answer must be in the same format as the examples.",
         **kwargs,
     ):
+        """Prompt for generating unlabeled data.
+
+        Args:
+            input_variables: Input variables / column name to use for generating unlabeled data.
+            task_description: Description of the task for the prompt prefix.
+
+        Raises:
+            AssertionError: If more than one input variable is passed.
+            AssertionError: If a target variable is passed.
+        """
         # Check if creating unlabeled data, that only one input_variable is passed
         assert (
             len(input_variables) == 1
