@@ -3,6 +3,7 @@ from datasets import Dataset
 
 logger = logging.getLogger(__name__)
 
+
 def preprocess_squad_format(dataset: Dataset) -> Dataset:
     """Preprocesses a dataset in SQuAD format (nested answers) to a dataset in SQuAD format that has flat answers.
     {"answer": {"text": "answer", "start": 0}} -> {"text": "answer"}
@@ -70,6 +71,6 @@ def calculate_answer_start(example):
             logger.info("Could not calculate the answer start because the context contains the answer more than once.")
             answer_start = -1
         else:
-            answer_start = answer_start
+            pass
     example["answer_start"] = answer_start
     return example

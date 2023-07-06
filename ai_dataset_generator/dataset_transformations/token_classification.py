@@ -8,15 +8,15 @@ from spacy.tokens import Doc
 from spacy.training import iob_to_biluo, biluo_tags_to_offsets, offsets_to_biluo_tags, biluo_to_iob
 
 # These are fixed for encoding the prompt and decoding the output of the LLM
-label_seperator = "\n"
-label2entity_seperator = "->"
-entity_seperator = ", "
+LABEL_SEPARATOR = "\n"
+LABEL2ENTITY_SEPARATOR = "->"
+ENTITY_SEPARATOR = ", "
 
 
 def token_labels_to_spans(
     dataset: Dataset, token_column: str, label_column: str, id2label: Dict
 ) -> Tuple[Dataset, List[str]]:
-    """Converts token level labels to spans. This is useful for NER tasks to prompt the LLM with natural language labels.
+    """Converts token level labels to spans. Useful for NER tasks to prompt the LLM with natural language labels.
 
     Args:
         dataset (Dataset): huggingface Dataset with token level labels
@@ -25,10 +25,10 @@ def token_labels_to_spans(
         id2label (Dict): mapping from label ids to label names
 
     Returns:
-        Tuple[Dataset, List[str]]: huggingface Dataset with span level labels and list of possible labels for the prompt
+        Tuple[Dataset, List[str]]: huggingface Dataset with span labels and list of possible labels for the prompt
     """
     new_label_column = f"{label_column}_natural_language"
-    label_options = list(set([label.replace("B-", "").replace("I-", "") for label in id2label.values()]))
+    label_options = list({label.replace("B-", "").replace("I-", "") for label in id2label.values()})
     label_options.remove("O")
 
     def labels_to_spans(examples):
@@ -42,9 +42,9 @@ def token_labels_to_spans(
             span_labels.setdefault(label, []).append(doc.text[start:end])
 
         examples[token_column] = doc.text
-        span_labels = {k: entity_seperator.join(v) for k, v in span_labels.items()}
-        examples[new_label_column] = label_seperator.join(
-            [f"{k} {label2entity_seperator} {v}" for k, v in span_labels.items()]
+        span_labels = {k: ENTITY_SEPARATOR.join(v) for k, v in span_labels.items()}
+        examples[new_label_column] = LABEL_SEPARATOR.join(
+            [f"{k} {LABEL2ENTITY_SEPARATOR} {v}" for k, v in span_labels.items()]
         )
         return examples
 
@@ -80,10 +80,10 @@ def spans_to_token_labels(dataset, token_column, label_column, id2label: Dict) -
             spans = []
             if not str_label:
                 continue
-            for label_and_entities in str_label.split(label_seperator):
-                label, entities = label_and_entities.split(label2entity_seperator)
+            for label_and_entities in str_label.split(LABEL_SEPARATOR):
+                label, entities = label_and_entities.split(LABEL2ENTITY_SEPARATOR)
                 label = label.strip()
-                entities = [entity.strip().lower() for entity in entities.split(entity_seperator)]
+                entities = [entity.strip().lower() for entity in entities.split(ENTITY_SEPARATOR)]
                 for entity in entities:
                     pattern = re.compile(re.escape(entity))
                     match = pattern.search(text.lower())

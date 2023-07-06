@@ -95,7 +95,7 @@ class TestTransformationsTokenClassification(unittest.TestCase):
         self.assertEqual(len(label_options), 4)
         self.assertEqual(type(dataset[0][self.target_variable]), str)
         self.assertNotEqual(type(dataset[0][self.target_variable]), int)
-        labels = [spans.split(label2entity_seperator, 1)[0].strip() for spans in dataset[0][self.target_variable].split(label_seperator)]
+        labels = [spans.split(LABEL2ENTITY_SEPARATOR, 1)[0].strip() for spans in dataset[0][self.target_variable].split(LABEL_SEPARATOR)]
         for label in labels:
             self.assertIn(label, label_options)
 

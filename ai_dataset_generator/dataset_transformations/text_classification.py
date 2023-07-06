@@ -7,7 +7,8 @@ def label_ids_to_textual_labels(
     label_column: str,
     id2label: Dict,
 ) -> Tuple[Dataset, List[str]]:
-    """Converts label ids to natural language labels for any classification problem with a single label such as text classification.
+    """Converts label ids to natural language labels for any classification problem with a single label such as text
+    classification.
 
     Args:
         dataset (Dataset): huggingface Dataset with label ids.
@@ -15,10 +16,11 @@ def label_ids_to_textual_labels(
         id2label (Dict): dictionary mapping label ids to natural language labels.
 
     Returns:
-        Tuple[Dataset, List[str]]: huggingface Dataset with natural language labels and list of natural language labels.
+        Tuple[Dataset, List[str]]: huggingface Dataset with natural language labels and list of natural language
+        labels.
     """
     new_label_column = f"{label_column}_natural_language"
-    label_options = list(set([label for label in id2label.values()]))
+    label_options = list(set(id2label.values()))
 
     def labels_to_natural_language(examples):
         examples[new_label_column] = id2label[examples[label_column]]
@@ -37,7 +39,8 @@ def textual_labels_to_label_ids(
     label_column: str,
     id2label: Dict,
 ) -> Dataset:
-    """Converts natural language labels to label ids for any classification problem with a single label such as text classification.
+    """Converts natural language labels to label ids for any classification problem with a single label such as text
+    classification.
 
     Args:
         dataset (Dataset): huggingface Dataset with natural language labels.

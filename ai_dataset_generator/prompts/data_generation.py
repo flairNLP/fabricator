@@ -3,6 +3,8 @@ from .base import LLMPrompt
 
 
 class GenerateUnlabeledDataPrompt(LLMPrompt):
+    """Prompt for generating unlabeled data."""
+
     def __init__(
         self,
         input_variables: Union[List[str], str],
@@ -20,12 +22,14 @@ class GenerateUnlabeledDataPrompt(LLMPrompt):
             AssertionError: If a target variable is passed.
         """
         # Check if creating unlabeled data, that only one input_variable is passed
-        assert (
-            len(input_variables) == 1
-        ), "When generating new unlabeled data, you must use exactly one input variable to generate similar text specifically associated with that variable."
-        assert (
-            kwargs.get("target_variable") is None
-        ), "When generating new unlabeled data, you cannot specify a target variable. The unlabeled data will be generated using the input_variable."
+        assert len(input_variables) == 1, (
+            "When generating new unlabeled data, you must use exactly one input variable to generate similar text "
+            "specifically associated with that variable."
+        )
+        assert kwargs.get("target_variable") is None, (
+            "When generating new unlabeled data, you cannot specify a target variable. The unlabeled data will be "
+            "generated using the input_variable."
+        )
 
         super().__init__(
             input_variables=input_variables,
