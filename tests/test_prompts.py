@@ -98,8 +98,12 @@ class TestClassLabelPrompt(unittest.TestCase):
         raw_prompt = prompt.get_prompt_text(fewshot_examples)
         self.assertEqual(raw_prompt, "Given the following classification examples, annotate the unlabeled example with a prediction that must correspond to exactly one of the following labels: 0: ABBR, 1: ENTY, 2: DESC, 3: HUM, 4: LOC, 5: NUM.\n\nText: What films featured the character Popeye Doyle ?\nCoarse_label: 1\n\nText: How can I find a list of celebrities ' real names ?\nCoarse_label: 2\n\nText: What fowl grabs the spotlight after the Chinese Year of the Monkey ?\nCoarse_label: 1\n\nText: {text}\nCoarse_label: ")
 
+
 class TestTokenLabelPrompt(unittest.TestCase):
     """Testcase for TokenLabelPrompt"""
+
+    def setUp(self) -> None:
+        self.dataset = load_dataset("conll2003", split="train")
 
     def test_mandatory_label_options(self):
         """Test initialization without mandatory label options"""
@@ -132,3 +136,17 @@ class TestTokenLabelPrompt(unittest.TestCase):
         """Test formatting template"""
         token_label_prompt = TokenLabelPrompt("test_input", "test_target", label_options=["test_label1", "test_label2"])
         self.assertEqual(token_label_prompt.target_formatting_template, "Test_input: {test_input}\nTest_target: ")
+
+    def test_formatting(self):
+        id2label = {k: v for k, v in enumerate(self.dataset.features["ner_tags"].feature.names)}
+        fewshot_examples = self.dataset.select([1, 2, 3])
+
+        prompt = ClassLabelPrompt(
+            input_variables="tokens",
+            target_variable="ner_tags",
+            label_options=id2label,
+        )
+        self.assertIn(", ".join([f"{k}: {v}" for k, v in id2label.items()]), prompt.task_description)
+
+        raw_prompt = prompt.get_prompt_text(fewshot_examples)
+        self.assertEqual(raw_prompt, "Given the following classification examples, annotate the unlabeled example with a prediction that must correspond to exactly one of the following labels: 0: O, 1: B-PER, 2: I-PER, 3: B-ORG, 4: I-ORG, 5: B-LOC, 6: I-LOC, 7: B-MISC, 8: I-MISC.\n\nTokens: ['Peter', 'Blackburn']\nNer_tags: [1, 2]\n\nTokens: ['BRUSSELS', '1996-08-22']\nNer_tags: [5, 0]\n\nTokens: ['The', 'European', 'Commission', 'said', 'on', 'Thursday', 'it', 'disagreed', 'with', 'German', 'advice', 'to', 'consumers', 'to', 'shun', 'British', 'lamb', 'until', 'scientists', 'determine', 'whether', 'mad', 'cow', 'disease', 'can', 'be', 'transmitted', 'to', 'sheep', '.']\nNer_tags: [0, 3, 4, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]\n\nTokens: {tokens}\nNer_tags: ")
