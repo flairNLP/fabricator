@@ -12,6 +12,9 @@ ClassificationOptions = Union[ClassificationLabels, ID2Label]
 
 
 class LLMPrompt:
+    """Base class for prompt generation. This class formats the prompt for the fewshot / support set examples
+    and the target variable such that the dataset generator can simply put in the invocation context."""
+
     def __init__(
         self,
         input_variables: Union[List[str], str],
@@ -23,17 +26,22 @@ class LLMPrompt:
         example_separator: str = "\n\n",
         inner_example_separator: str = "\n",
     ):
-        """Base class for prompt generation. This class formats the prompt for the fewshot / support set examples and the target variable
-        such that the dataset generator can simply put in the invocation context.
+        """Base class for prompt generation. This class formats the prompt for the fewshot / support set examples.
 
         Args:
-            input_variables (Union[List[str], str]): List or string of input variables / column names for the fewshot / support set examples
-            target_variable (Optional[str], optional): Target variable / column name. The column is annotated by the LLM. Defaults to None.
+            input_variables (Union[List[str], str]): List or string of input variables / column names for the
+            fewshot / support set examples
+            target_variable (Optional[str], optional): Target variable / column name. The column is annotated by the
+            LLM. Defaults to None.
             task_description (Optional[str], optional): Task description for the prompt (prefix). Defaults to None.
-            label_options (Optional[ClassificationOptions], optional): Label options for the LLM to choose from. Defaults to None.
-            examples_formatting_template (Optional[str], optional): Template for formatting the fewshot / support set examples. Defaults to None.
-            target_formatting_template (Optional[str], optional): Template for formatting the target variable. Defaults to None.
-            example_separator (str, optional): Separator between the fewshot / support set examples. Defaults to "\n\n".
+            label_options (Optional[ClassificationOptions], optional): Label options for the LLM to choose from.
+            Defaults to None.
+            examples_formatting_template (Optional[str], optional): Template for formatting the fewshot / support set
+            examples. Defaults to None.
+            target_formatting_template (Optional[str], optional): Template for formatting the target variable.
+            Defaults to None.
+            example_separator (str, optional): Separator between the fewshot / support set examples.
+            Defaults to "\n\n".
             inner_example_separator (str, optional): Separator in-between a single fewshot examples. Defaults to "\n".
 
         Raises:
@@ -45,7 +53,7 @@ class LLMPrompt:
             >>> from ai_dataset_generator.prompts import ClassLabelPrompt
             >>> input_variable = "text"
             >>> target_variable = "coarse_label"
-            >>> 
+            >>>
             >>> dataset = load_dataset("trec", split="train")
             >>> id2label = {k: v for k, v in enumerate(dataset.features[target_variable].names)}
             >>> fewshot_examples = dataset.select([1,2,3])
@@ -62,7 +70,8 @@ class LLMPrompt:
         if label_options is not None:
             if "{label_options}" not in task_description:
                 logger.warning(
-                    "{label_options} is not found in the task_description. If you want to limit your answers to these information, make sure to include {label_options}."
+                    "{label_options} is not found in the task_description. If you want to limit your answers to "
+                    "these information, make sure to include {label_options}."
                 )
 
             if isinstance(label_options, dict):
@@ -74,12 +83,12 @@ class LLMPrompt:
 
             try:
                 task_description = task_description.format(label_options=formatted_label_options)
-            except KeyError:
+            except KeyError as exc:
                 raise KeyError(
                     "The provided task description cannot be formatted with the variable 'label_options'. "
-                    "You need to include {label_options} in the task_description string to limit your prompt output to these labels. "
-                    "For example: task_description='[...] limit your answer to: {label_options}.'"
-                )
+                    "You need to include {label_options} in the task_description string to limit your prompt output "
+                    "to these labels. For example: task_description='[...] limit your answer to: {label_options}.'"
+                ) from exc
 
         # If only one input_variable is passed, convert it to a list
         if isinstance(input_variables, str):
@@ -123,16 +132,42 @@ class LLMPrompt:
 
     @staticmethod
     def filter_example_by_columns(example: Dict[str, str], columns: List[str]) -> Dict[str, str]:
+        """Filter single example by columns.
+
+        Args:
+            example (Dict[str, str]): Example to filter
+            columns (List[str]): Columns to keep
+
+        Returns:
+            Dict[str, str]: Filtered example
+        """
         filtered_example = {key: value for key, value in example.items() if key in columns}
         return filtered_example
 
     def filter_examples_by_columns(self, dataset: Dataset, columns: List[str]) -> List[Dict[str, str]]:
+        """Filter examples by columns.
+
+        Args:
+            dataset (Dataset): Dataset to filter
+            columns (List[str]): Columns to keep
+
+        Returns:
+            List[Dict[str, str]]: Filtered examples
+        """
         filtered_inputs = []
         for example in dataset:
             filtered_inputs.append(self.filter_example_by_columns(example, columns))
         return filtered_inputs
 
     def get_prompt_text(self, examples: Dataset) -> str:
+        """Get prompt text for the given examples.
+
+        Args:
+            examples (Dataset): Examples to use for the prompt
+
+        Returns:
+            str: Prompt text
+        """
         examples = self.filter_examples_by_columns(examples, self.variables_for_examples)
         formatted_examples = [self.example_prompt.format_prompt(**example).text for example in examples]
         prompt_text = self.example_separator.join(

@@ -12,7 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 class DatasetGenerator:
+    """The DatasetGenerator class is the main class of the ai_dataset_generator package.
+    It generates datasets based on a prompt template. The main function is generate()."""
+
     def __init__(self, prompt_node: PromptNode):
+        """Initialize the DatasetGenerator with a prompt node.
+
+        Args:
+            prompt_node (PromptNode): Prompt node / LLM from haystack.
+        """
         self.prompt_node = prompt_node
 
     def generate(
@@ -25,6 +33,22 @@ class DatasetGenerator:
         max_prompt_calls: int = 10,
         return_original_dataset: bool = False,
     ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
+        """Generate a dataset based on a prompt template and support examples.
+        Optionally, unlabeled examples can be provided to annotate unlabeled data.
+
+        Args:
+            support_examples (Dataset): Support examples to generate the dataset from.
+            prompt_template (LLMPrompt): Prompt template to generate the dataset with.
+            unlabeled_examples (Optional[Dataset], optional): Unlabeled examples to annotate. Defaults to None.
+            support_examples_per_prompt (int, optional): Number of support examples per prompt. Defaults to 2.
+            num_samples_to_generate (int, optional): Number of samples to generate. Defaults to 10.
+            max_prompt_calls (int, optional): Maximum number of prompt calls. Defaults to 10.
+            return_original_dataset (bool, optional): Whether to return the original dataset. Defaults to False.
+
+        Returns:
+            Union[Dataset, Tuple[Dataset, Dataset]]: Generated dataset or tuple of generated dataset and original
+            dataset.
+        """
         # Check if required variables of the prompt template occure in every data point
         assert all(
             field in support_examples.column_names for field in prompt_template.variables_for_examples
@@ -102,5 +126,5 @@ class DatasetGenerator:
 
         if return_original_dataset:
             return generated_dataset, original_dataset
-        else:
-            return generated_dataset
+
+        return generated_dataset
