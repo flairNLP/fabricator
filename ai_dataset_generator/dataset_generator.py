@@ -86,7 +86,7 @@ class DatasetGenerator:
             )
 
             pred = self.prompt_node.run(
-                prompt_template=HaystackPromptTemplate(name="prompt_text", prompt_text=prompt_text),
+                prompt_template=HaystackPromptTemplate(prompt=prompt_text),
                 invocation_context=invocation_context,
             )[0]["results"]
 
