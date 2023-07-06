@@ -55,6 +55,7 @@ def token_labels_to_spans(
 
 def spans_to_token_labels(dataset, token_column, label_column, id2label: Dict) -> Dataset:
     """Converts span level labels to token level labels. This is useful for NER tasks to decode the output of the LLM.
+    #TODO: this is very slow for large datasets. We should remove dependency from spacy at some point.
 
     Args:
         dataset (Dataset): huggingface Dataset with span level labels
@@ -69,42 +70,44 @@ def spans_to_token_labels(dataset, token_column, label_column, id2label: Dict) -
     label2id = {v: k for k, v in id2label.items()}
 
     def labels_to_spans(examples):
-        text = examples[token_column].lower()
+        texts = examples[token_column]
         str_labels = examples[label_column]
+        # goal list of lists of tuples (start, end, label)
 
-        try:
-            label2entites = {}
-            for annotations in str_labels.split(label_seperator):
-                label, entities = annotations.split(label2entity_seperator)
-                label2entites[label.strip()] = [e.strip().lower() for e in entities.split(entity_seperator)]
-
+        tokens = []
+        bio_tags = []
+        for text, str_label in zip(texts, str_labels):
             spans = []
-            for label, entities in label2entites.items():
+            if not str_label:
+                continue
+            for label_and_entities in str_label.split(label_seperator):
+                label, entities = label_and_entities.split(label2entity_seperator)
+                label = label.strip()
+                entities = [entity.strip().lower() for entity in entities.split(entity_seperator)]
                 for entity in entities:
                     pattern = re.compile(re.escape(entity))
-                    match = pattern.search(text)
+                    match = pattern.search(text.lower())
                     if match:
                         spans.append((match.start(), match.end(), label))
                     else:
                         pass
 
             nlp = spacy.blank("en")
-            doc = nlp(examples["tokens"])
-            tags = biluo_to_iob(offsets_to_biluo_tags(doc, spans))
-            tokens = [word.text for word in doc]
+            doc = nlp(text)
+            try:
+                bio_tags.append(biluo_to_iob(offsets_to_biluo_tags(doc, spans)))
+                tokens.append([word.text for word in doc])
+            except ValueError:
+                bio_tags.append([])
+                tokens.append([])
 
-            examples[token_column] = tokens
-            examples[new_label_column] = [label2id[tag] for tag in tags]
-
-        except ValueError:
-            examples[token_column] = []
-            examples[new_label_column] = []
-            return examples
+        examples[token_column] = tokens
+        examples[new_label_column] = [[label2id[tag] for tag in tags] for tags in bio_tags]
 
         return examples
 
     dataset = (
-        dataset.map(labels_to_spans)
+        dataset.map(labels_to_spans, batched=True)
         .remove_columns(label_column)
         .rename_column(new_label_column, label_column)
         .filter(lambda example: len(example[token_column]) > 0)

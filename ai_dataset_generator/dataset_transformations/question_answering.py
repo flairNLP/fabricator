@@ -1,5 +1,7 @@
+import logging
 from datasets import Dataset
 
+logger = logging.getLogger(__name__)
 
 def preprocess_squad_format(dataset: Dataset) -> Dataset:
     """Preprocesses a dataset in SQuAD format (nested answers) to a dataset in SQuAD format that has flat answers.
@@ -56,7 +58,7 @@ def calculate_answer_start(example):
     """
     answer_start = example["context"].find(example["answer"])
     if answer_start < 0:
-        print(
+        logger.info(
             f'Could not calculate the answer start because the context "{example["context"]}" '
             f'does not contain the answer "{example["answer"]}".'
         )
@@ -65,7 +67,7 @@ def calculate_answer_start(example):
         # check that the answer doesn't occur more than once in the context
         second_answer_start = example["context"].find(example["answer"], answer_start + 1)
         if second_answer_start >= 0:
-            print("Could not calculate the answer start because the context contains the answer more than once.")
+            logger.info("Could not calculate the answer start because the context contains the answer more than once.")
             answer_start = -1
         else:
             answer_start = answer_start
