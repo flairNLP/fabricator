@@ -1,5 +1,6 @@
 import re
 from typing import Dict, List, Tuple
+from collections import defaultdict
 from datasets import Dataset
 
 import spacy
@@ -37,9 +38,9 @@ def token_labels_to_spans(
         doc = Doc(Vocab(), words=examples[token_column])
         offsets = biluo_tags_to_offsets(doc, bilou_tags)
 
-        span_labels = {}
+        span_labels = defaultdict(list)
         for start, end, label in offsets:
-            span_labels.setdefault(label, []).append(doc.text[start:end])
+            span_labels[label].append(doc.text[start:end])
 
         examples[token_column] = doc.text
         span_labels = {k: ENTITY_SEPARATOR.join(v) for k, v in span_labels.items()}

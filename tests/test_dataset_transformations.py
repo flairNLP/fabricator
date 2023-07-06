@@ -14,7 +14,7 @@ class TestTransformationsTextClassification(unittest.TestCase):
         self.input_variable = "text"
         self.target_variable = "coarse_label"
         self.dataset = load_dataset("trec", split="train")
-        self.id2label = {k: v for k, v in enumerate(self.dataset.features[self.target_variable].names)}
+        self.id2label = dict(enumerate(self.dataset.features[self.target_variable].names))
 
     def test_label_ids_to_textual_label(self):
         """Test transformation output only"""
@@ -87,7 +87,7 @@ class TestTransformationsTokenClassification(unittest.TestCase):
         self.input_variable = "tokens"
         self.target_variable = "ner_tags"
         self.dataset = load_dataset("conll2003", split="train")
-        self.id2label = {k: v for k, v in enumerate(self.dataset.features[self.target_variable].feature.names)}
+        self.id2label = dict(enumerate(self.dataset.features[self.target_variable].feature.names))
 
     def test_bio_tokens_to_spans(self):
         """Test transformation output only (BIO to spans)"""
