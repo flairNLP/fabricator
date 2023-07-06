@@ -1,4 +1,3 @@
 datasets
 langchain
-farm-haystack
-spacy
+farm-haystack>=1.18.0
