@@ -5,37 +5,39 @@ from argparse import ArgumentParser
 from datasets import load_dataset
 from haystack.nodes import PromptNode
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import DataGenerationPrompt
+from ai_dataset_generator.prompts import ClassLabelPrompt
 
 
-def run(args):
-    dataset = load_dataset(args.dataset, split=args.split)
-    fewshot_examples = dataset.select(random.sample(range(len(dataset)), args.num_fewshot_examples))
-    idx2label = {idx: key for idx, key in enumerate(fewshot_examples.features[args.target_variable].names)}
+def run(arguments):
+    """Generate annotations for unlabeled data for a given dataset and split."""
+    dataset = load_dataset(arguments.dataset, split=arguments.split)
+    fewshot_examples = dataset.select(random.sample(range(len(dataset)), arguments.num_fewshot_examples))
+    idx2label = dict(enumerate(fewshot_examples.features[arguments.target_variable].names))
 
-    prompt = DataGenerationPrompt(
-        input_variables=args.input_variables,
-        target_variable=args.target_variable,
-        output_format=args.output_format,
-        task_description=args.task_description,
-        classification_labels=idx2label,
+    prompt = ClassLabelPrompt(
+        input_variables=arguments.input_variables,
+        target_variable=arguments.target_variable,
+        label_options=idx2label,
+        task_description=arguments.task_description,
     )
     raw_prompt = prompt.get_prompt_text(fewshot_examples)
     print(raw_prompt)
 
     unlabeled_data = dataset.select(random.sample(range(len(dataset)), 3))
     prompt_node = PromptNode(
-        model_name_or_path=args.llm, api_key=os.environ.get("OPENAI_API_KEY"), max_length=args.max_generation_length
+        model_name_or_path=arguments.llm,
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        max_length=arguments.max_generation_length,
     )
     generator = DatasetGenerator(prompt_node)
     generated_dataset = generator.generate(
         support_examples=fewshot_examples,  # from above
         unlabeled_examples=unlabeled_data,
         prompt_template=prompt,  # from above
-        max_prompt_calls=args.max_prompt_calls,  # max number of calls to the LLM
-        support_examples_per_prompt=args.support_examples_per_prompt,  # number of support examples per prompt
+        max_prompt_calls=arguments.max_prompt_calls,  # max number of calls to the LLM
+        support_examples_per_prompt=arguments.support_examples_per_prompt,  # number of support examples per prompt
     )
-    if args.push_to_hub:
+    if arguments.push_to_hub:
         generated_dataset.push_to_hub("your-first-generated-dataset")
     print()
 
@@ -45,7 +47,9 @@ if __name__ == "__main__":
     parser.add_argument("--llm", type=str, default="text-davinci-003")
     parser.add_argument("--max_generation_length", type=int, default=100)
     parser.add_argument(
-        "--task_description", type=str, default="Classify the review whether it's positive or negative"
+        "--task_description",
+        type=str,
+        default="Classify the review whether it's positive or negative: " "{label_options}.",
     )
     parser.add_argument("--dataset", type=str, default="imdb")
     parser.add_argument("--split", type=str, default="train")

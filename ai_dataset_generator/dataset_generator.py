@@ -1,6 +1,7 @@
 import logging
 import random
 from typing import Optional, Union, Tuple
+from collections import defaultdict
 
 from datasets import Dataset
 from haystack.nodes import PromptNode
@@ -62,8 +63,8 @@ class DatasetGenerator:
                 prompt_template.input_variables[0], str
             ), "The input_variable must be a string, indicating the column to generate unlabeled data for."
 
-        generated_dataset = {}
-        original_dataset = {}
+        generated_dataset = defaultdict(list)
+        original_dataset = defaultdict(list)
 
         if unlabeled_examples is None:
             input_examples = iter(
@@ -98,20 +99,20 @@ class DatasetGenerator:
                     input_example, prompt_template.input_variables
                 )
                 for key, value in generated_sample.items():
-                    generated_dataset.setdefault(key, []).append(value)
+                    generated_dataset[key].append(value)
 
                 if type(pred) is not type(input_example[prompt_template.target_variable]):
                     try:
                         pred = type(input_example[prompt_template.target_variable])(pred)
                     except TypeError:
                         continue
-                generated_dataset.setdefault(prompt_template.target_variable, []).append(pred)
+                generated_dataset[prompt_template.target_variable].append(pred)
             else:
-                generated_dataset.setdefault(prompt_template.input_variables[0], []).append(pred)
+                generated_dataset[prompt_template.input_variables[0]].append(pred)
 
             if return_original_dataset:
                 for key, value in input_example.items():
-                    original_dataset.setdefault(key, []).append(value)
+                    original_dataset[key].append(value)
 
             if prompt_call_idx >= max_prompt_calls:
                 logger.info(f"Reached maximum number of prompt calls ({max_prompt_calls}).")

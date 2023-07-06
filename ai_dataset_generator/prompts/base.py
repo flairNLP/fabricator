@@ -55,7 +55,7 @@ class LLMPrompt:
             >>> target_variable = "coarse_label"
             >>>
             >>> dataset = load_dataset("trec", split="train")
-            >>> id2label = {k: v for k, v in enumerate(dataset.features[target_variable].names)}
+            >>> id2label = dict(enumerate(dataset.features[target_variable].names))
             >>> fewshot_examples = dataset.select([1,2,3])
             >>>
             >>> prompt = ClassLabelPrompt(

@@ -85,7 +85,7 @@ class TestClassLabelPrompt(unittest.TestCase):
         self.assertEqual(class_label_prompt.target_formatting_template, "Test_input: {test_input}\nTest_target: ")
 
     def test_formatting(self):
-        id2label = {k: v for k, v in enumerate(self.dataset.features["coarse_label"].names)}
+        id2label = dict(enumerate(self.dataset.features["coarse_label"].names))
         fewshot_examples = self.dataset.select([1, 2, 3])
 
         prompt = ClassLabelPrompt(
@@ -138,7 +138,7 @@ class TestTokenLabelPrompt(unittest.TestCase):
         self.assertEqual(token_label_prompt.target_formatting_template, "Test_input: {test_input}\nTest_target: ")
 
     def test_formatting(self):
-        id2label = {k: v for k, v in enumerate(self.dataset.features["ner_tags"].feature.names)}
+        id2label = dict(enumerate(self.dataset.features["ner_tags"].feature.names))
         fewshot_examples = self.dataset.select([1, 2, 3])
 
         prompt = ClassLabelPrompt(
