@@ -1,34 +1,25 @@
+import json
 import logging
 import random
-import signal
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Union, Tuple
+from typing import Any, Dict, Iterable, Optional, Union, Tuple
 from collections import defaultdict
 
 from datasets import Dataset
 from haystack.nodes import PromptNode
 from haystack.nodes import PromptTemplate as HaystackPromptTemplate
 
-from ai_dataset_generator.prompts import DataGenerationPrompt
 from ai_dataset_generator.utils import log_dir, create_timestamp_path
 from ai_dataset_generator.prompts.base import LLMPrompt
 
 logger = logging.getLogger(__name__)
 
 
-class GenerationTimeoutError(Exception):
-    """Raised when the generation times out."""
-    pass
-
-def timeout_handler(signum, frame):
-    """Handler for the SIGALRM signal."""
-    raise GenerationTimeoutError("Generation timed out.")
-
 class DatasetGenerator:
     """The DatasetGenerator class is the main class of the ai_dataset_generator package.
     It generates datasets based on a prompt template. The main function is generate()."""
 
-    def __init__(self, prompt_node: PromptNode, timeout: int = 60, max_tries: int = 3):
+    def __init__(self, prompt_node: PromptNode):
         """Initialize the DatasetGenerator with a prompt node.
 
         Args:
@@ -36,21 +27,21 @@ class DatasetGenerator:
         """
         self.prompt_node = prompt_node
         self._base_log_dir = log_dir()
-        self._timeout = timeout
-        self._max_tries = max_tries 
 
-    def _setup_log(self, prompt_template: DataGenerationPrompt) -> Path:
-        """For every generation run create a new log dir.
+    def _setup_log(self, prompt_template: LLMPrompt) -> Path:
+        """For every generation run create a new log file.
+        Current format: <timestamp>_<prompt_template_name>.jsonl
 
-        Discuss: 
-            * What do we want to log?
-            * How do we call the log dirs? E.g. timestamp + prompt template name?
-            * What format do we want to use? json?
-            * Maybe a small recovery script that can recover the generated dataset from the logs?
-        
+        Args:
+            prompt_template (LLMPrompt): Prompt template to generate the dataset with.
+
+        Returns:
+            Path: Path to the log file.
+
         """
-        timestamp_path = create_timestamp_path(self._log_dir)
-        log_file = Path(f"{timestamp_path}_{prompt_template.task_description}.json")
+        timestamp_path = create_timestamp_path(self._base_log_dir)
+        log_file = Path(f"{timestamp_path}_{prompt_template.__class__.__name__}.jsonl")
+        log_file.parent.mkdir(parents=True, exist_ok=True)
         log_file.touch()
         return log_file
 
@@ -102,23 +93,21 @@ class DatasetGenerator:
             input_examples = iter(unlabeled_examples)
 
         generated_dataset, original_dataset = self._inner_generate_loop(
-            input_examples, # type: ignore
+            input_examples,  # type: ignore
             support_examples,
             support_examples_per_prompt,
             prompt_template,
             max_prompt_calls,
             num_samples_to_generate,
-            dry_run
+            return_original_dataset,
+            dry_run,
         )
-
-        generated_dataset = Dataset.from_dict(generated_dataset)
-        original_dataset = Dataset.from_dict(original_dataset)
 
         if return_original_dataset:
             return generated_dataset, original_dataset
-        else:
-            return generated_dataset
-        
+
+        return generated_dataset
+
     def _try_generate(self, prompt_text: str, invocation_context: Dict, dry_run: bool) -> Optional[str]:
         """Tries to generate a single example. Restrict the time spent on this.
 
@@ -132,22 +121,14 @@ class DatasetGenerator:
         """
         # TODO: Some sensible return value for dummy
         if dry_run:
-            return ""
-        
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(self._timeout)
+            return "Label"
 
-        try:
-            # TODO: Check return value and 
-            prediction = self.prompt_node.run(
-                prompt_template=HaystackPromptTemplate(name="prompt_text", prompt_text=prompt_text),
-                invocation_context=invocation_context,
-            )[0]["results"]
-        except GenerationTimeoutError:
-            # TODO: String or just None?
-            prediction = None
-        finally:
-            signal.alarm(0)  # Disable alarm
+        # Haystack internally uses timeouts and retries, so we dont have to do it
+        # We dont catch authentification errors here, because we want to fail fast
+        prediction = self.prompt_node.run(
+            prompt_template=HaystackPromptTemplate(prompt=prompt_text),
+            invocation_context=invocation_context,
+        )[0]["results"]
 
         return prediction
 
@@ -156,13 +137,12 @@ class DatasetGenerator:
         input_examples: Iterable[Dict],
         support_examples: Dataset,
         support_examples_per_prompt: int,
-        prompt_template: DataGenerationPrompt,
+        prompt_template: LLMPrompt,
         max_prompt_calls: int,
         num_samples_to_generate: int,
         return_original_dataset: bool,
-        dry_run: bool
+        dry_run: bool,
     ):
-        
         current_tries_left = self._max_tries
         current_log_file = self._setup_log(prompt_template)
 
@@ -182,37 +162,47 @@ class DatasetGenerator:
 
             if prediction is None:
                 current_tries_left -= 1
-                logger.warning(
-                    f"Timeout ({self._timeout} seconds) exceeded. {current_tries_left} tries left."
-                )
+                logger.warning(f"Could not generate example for prompt {prompt_text}.")
                 if current_tries_left == 0:
                     logger.warning(
-                        f"Max tries ({self._max_tries}) exceeded. Returning generated dataset with {len(generated_dataset)} examples."
+                        f"Max tries ({self._max_tries}) exceeded. Returning generated dataset with"
+                        " {len(generated_dataset)} examples."
                     )
                     break
 
             if len(prediction) == 1:
                 prediction = prediction[0]
 
+            # If we have a target variable, we re-use the relevant columns of the input example
+            # and add the prediction to the generated dataset
             if prompt_template.target_variable is not None:
                 generated_sample = prompt_template.filter_example_by_columns(
                     input_example, prompt_template.input_variables
                 )
+
                 for key, value in generated_sample.items():
                     generated_dataset[key].append(value)
 
-                if not isinstance(prediction, type(input_example[prompt_template.target_variable])):
-                    try:
-                        prediction = type(input_example[prompt_template.target_variable])(prediction)
-                    except TypeError:
-                        # TODO: Do we just skip it?
-                        logger.warning(
-                            f"Could not convert prediction {prediction} to type {type(input_example[prompt_template.target_variable])}."
-                        )
-                        continue
+                # Try to safely convert the prediction to the type of the target variable
+                if prompt_template.target_variable in input_example:
+                    prediction = self._convert_prediction(
+                        prediction, type(input_example[prompt_template.target_variable])
+                    )
+
                 generated_dataset[prompt_template.target_variable].append(prediction)
             else:
                 generated_dataset[prompt_template.input_variables[0]].append(prediction)
+
+            log_entry = {
+                "prompt": prompt_text,
+                "invocation_context": invocation_context,
+                "prediction": prediction,
+                "target": prompt_template.target_variable
+                if prompt_template.target_variable is not None
+                else prompt_template.input_variables[0],
+            }
+            with open(current_log_file, "a", encoding="utf-8") as log_file:
+                log_file.write(f"{json.dumps(log_entry)}\n")
 
             if return_original_dataset:
                 for key, value in input_example.items():
@@ -227,9 +217,31 @@ class DatasetGenerator:
                 break
 
         generated_dataset = Dataset.from_dict(generated_dataset)
-        original_dataset = Dataset.from_dict(original_dataset)
 
         if return_original_dataset:
+            original_dataset = Dataset.from_dict(original_dataset)
             return generated_dataset, original_dataset
 
-        return generated_dataset
+        return generated_dataset, None
+
+    def _convert_prediction(self, prediction: str, target_type: type) -> Any:
+        """Converts a prediction to the target type.
+
+        Args:
+            prediction: Prediction to convert.
+            target_type: Type to convert the prediction to.
+
+        Returns:
+            Converted prediction.
+        """
+
+        if isinstance(prediction, target_type):
+            return prediction
+
+        try:
+            return target_type(prediction)
+        except ValueError:
+            logger.warning(
+                f"Could not convert prediction {repr(prediction)} to type {target_type}. Returning original prediction."
+            )
+            return prediction
