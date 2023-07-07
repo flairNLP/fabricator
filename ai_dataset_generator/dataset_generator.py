@@ -1,6 +1,8 @@
 import logging
 import random
+import signal
 from collections import defaultdict
+from pathlib import Path
 from typing import Dict, Iterable, Optional, Union, Tuple
 
 from datasets import Dataset
@@ -13,15 +15,35 @@ from ai_dataset_generator.utils import log_dir, create_timestamp_path
 logger = logging.getLogger(__name__)
 
 
-class DatasetGenerator:
-    def __init__(self, prompt_node: PromptNode):
-        self.prompt_node = prompt_node
-        self._log_dir = log_dir()
+class GenerationTimeoutError(Exception):
+    """Raised when the generation times out."""
+    pass
 
-    def _setup_logging(self, prompt_template: DataGenerationPrompt, support_examples: Dataset):
-        # Create log dir
+def timeout_handler(signum, frame):
+    """Handler for the SIGALRM signal."""
+    raise GenerationTimeoutError("Generation timed out.")
+
+class DatasetGenerator:
+    def __init__(self, prompt_node: PromptNode, timeout: int = 60, max_tries: int = 3):
+        self.prompt_node = prompt_node
+        self._base_log_dir = log_dir()
+        self._timeout = timeout
+        self._max_tries = max_tries 
+
+    def _setup_log(self, prompt_template: DataGenerationPrompt) -> Path:
+        """For every generation run create a new log dir.
+
+        Discuss: 
+            * What do we want to log?
+            * How do we call the log dirs? E.g. timestamp + prompt template name?
+            * What format do we want to use? json?
+            * Maybe a small recovery script that can recover the generated dataset from the logs?
+        
+        """
         timestamp_path = create_timestamp_path(self._log_dir)
-        self._log_dir = timestamp_path
+        log_file = Path(f"{timestamp_path}_{prompt_template.task_description}.json")
+        log_file.touch()
+        return log_file
 
     def generate(
         self,
@@ -88,6 +110,38 @@ class DatasetGenerator:
             return generated_dataset, original_dataset
         else:
             return generated_dataset
+        
+    def _try_generate(self, prompt_text: str, invocation_context: Dict, dry_run: bool) -> Optional[str]:
+        """Tries to generate a single example. Restrict the time spent on this.
+
+        Args:
+            prompt_text: Prompt text to generate an example for.
+            invocation_context: Invocation context to generate an example for.
+            dry_run: Whether to actually generate the example or just return a dummy example.
+
+        Returns:
+            Generated example
+        """
+        # TODO: Some sensible return value for dummy
+        if dry_run:
+            return ""
+        
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(self._timeout)
+
+        try:
+            # TODO: Check return value and 
+            prediction = self.prompt_node.run(
+                prompt_template=HaystackPromptTemplate(name="prompt_text", prompt_text=prompt_text),
+                invocation_context=invocation_context,
+            )[0]["results"]
+        except GenerationTimeoutError:
+            # TODO: String or just None?
+            prediction = None
+        finally:
+            signal.alarm(0)  # Disable alarm
+
+        return prediction
 
     def _inner_generate_loop(
         self,
@@ -99,6 +153,10 @@ class DatasetGenerator:
         num_samples_to_generate: int,
         dry_run: bool
     ):
+        
+        current_tries_left = self._max_tries
+        current_log_file = self._setup_log(prompt_template)
+
         generated_dataset = defaultdict(list)
         original_dataset = defaultdict(list)
 
@@ -111,16 +169,21 @@ class DatasetGenerator:
                 input_example, prompt_template.input_variables
             )
 
-            if dry_run:
-                pred = "<Dry Run>"
-            else:
-                pred = self.prompt_node.run(
-                    prompt_template=HaystackPromptTemplate(name="prompt_text", prompt_text=prompt_text),
-                    invocation_context=invocation_context,
-                )[0]["results"]
+            prediction = self._try_generate(prompt_text, invocation_context, dry_run)
 
-            if len(pred) == 1:
-                pred = pred[0]
+            if prediction is None:
+                current_tries_left -= 1
+                logger.warning(
+                    f"Timeout ({self._timeout} seconds) exceeded. {current_tries_left} tries left."
+                )
+                if current_tries_left == 0:
+                    logger.warning(
+                        f"Max tries ({self._max_tries}) exceeded. Returning generated dataset with {len(generated_dataset)} examples."
+                    )
+                    break
+
+            if len(prediction) == 1:
+                prediction = prediction[0]
 
             if prompt_template.target_variable is not None:
                 generated_sample = prompt_template.filter_example_by_columns(
@@ -129,15 +192,19 @@ class DatasetGenerator:
                 for key, value in generated_sample.items():
                     generated_dataset[key].append(value)
 
-                if type(pred) is not type(input_example[prompt_template.target_variable]):
+                if not isinstance(prediction, type(input_example[prompt_template.target_variable]):
                     try:
-                        pred = type(input_example[prompt_template.target_variable])(pred)
+                        prediction = type(input_example[prompt_template.target_variable])(prediction)
                     except TypeError:
+                        # TODO: Do we just skip it?
+                        logger.warning(
+                            f"Could not convert prediction {prediction} to type {type(input_example[prompt_template.target_variable])}."
+                        )
                         continue
 
-                generated_dataset[prompt_template.target_variable].append(pred)
+                generated_dataset[prompt_template.target_variable].append(prediction)
             else:
-                generated_dataset[prompt_template.input_variables[0]].append(pred)
+                generated_dataset[prompt_template.input_variables[0]].append(prediction)
             
             # As long as we are not dealing with millions of examples, we can safely populate
             for key, value in input_example.items():
