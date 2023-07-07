@@ -172,7 +172,7 @@ def _infere_class_labels(dataset: Dataset, label_column: str) -> Dict[int, str]:
             f"ClassLabel or Sequence"
         )
 
-    return {idx: label for idx, label in enumerate(class_labels)}
+    return dict(enumerate(class_labels))
 
 
 def _relative_complements(list1: List, list2: Union[List, Set]) -> Set:
