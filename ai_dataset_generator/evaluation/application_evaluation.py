@@ -1,14 +1,15 @@
+import os
+import random
+from argparse import ArgumentParser
+from pathlib import Path
+
 import evaluate
 import numpy as np
-import os
 import pandas as pd
-import random
 import torch
-from argparse import ArgumentParser
 from datasets import load_dataset
 from haystack.nodes import PromptNode
 from loguru import logger
-from pathlib import Path
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -17,7 +18,7 @@ from transformers import (
 from transformers import TrainingArguments, Trainer
 
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import GenerateUnlabeledDataPrompt
+from ai_dataset_generator.prompts import GenerateUnlabeledDataPrompt, ClassLabelPrompt
 
 
 class ApplicationEvaluator:
@@ -58,16 +59,14 @@ class ApplicationEvaluator:
         logger.info("loaded dataset {}", self.dataset_name)
 
         # get number of unique labels
-        self.num_labels = len(
-            set(self.dataset["train"][self.dataset_column_name_target])
-        )
+        self.num_labels = len(set(self.dataset["train"][self.dataset_column_name_target]))
         logger.info("found {} labels in dataset {}", self.num_labels, self.dataset_name)
 
         # initialize LM and its tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(self.lm_name)
-        self.lm = AutoModelForSequenceClassification.from_pretrained(
-            self.lm_name, num_labels=self.num_labels
-        ).to(self.device)
+        self.lm = AutoModelForSequenceClassification.from_pretrained(self.lm_name, num_labels=self.num_labels).to(
+            self.device
+        )
         logger.info("initialized LM {}", self.lm_name)
 
         # tokenize dataset
@@ -177,14 +176,7 @@ class ApplicationEvaluator:
         logger.info("saved {} results to {}", len(self.df), self.results_pathname)
 
 
-def run(arguments):
-    # evaluator = ApplicationEvaluator()
-
-    dataset = load_dataset(arguments.dataset, split=arguments.split)
-    fewshot_examples = dataset.select(
-        random.sample(range(len(dataset)), arguments.num_fewshot_examples)
-    )
-
+def generate_unlabeled_data(fewshot_examples, arguments):
     prompt = GenerateUnlabeledDataPrompt(
         input_variables=arguments.input_variables,
         task_description=arguments.task_description,
@@ -204,14 +196,60 @@ def run(arguments):
     )
     logger.info("generated dataset {}", generated_dataset)
 
+    return generated_dataset
+
+
+def annotate_dataset(fewshot_examples, generated_unlabeled_dataset, arguments):
+    idx2label = dict(enumerate(fewshot_examples.features[arguments.target_variable].names))
+
+    prompt = ClassLabelPrompt(
+        input_variables=arguments.input_variables,
+        target_variable=arguments.target_variable,
+        label_options=idx2label,
+        task_description=arguments.task_description,
+    )
+    raw_prompt = prompt.get_prompt_text(fewshot_examples)
+    print(raw_prompt)
+
+    prompt_node = PromptNode(
+        model_name_or_path=arguments.llm,
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        max_length=arguments.max_generation_length,
+    )
+    generator = DatasetGenerator(prompt_node)
+    generated_dataset = generator.generate(
+        support_examples=fewshot_examples,  # from above
+        unlabeled_examples=generated_unlabeled_dataset,
+        prompt_template=prompt,  # from above
+        max_prompt_calls=arguments.max_prompt_calls,  # max number of calls to the LLM
+        support_examples_per_prompt=arguments.support_examples_per_prompt,  # number of support examples per prompt
+    )
+    logger.info("annotated dataset {}", generated_dataset)
+
+    return generated_dataset
+
+
+def run(arguments):
+    # evaluator = ApplicationEvaluator()
+
+    # load the dataset split and some few shot examples
+    dataset = load_dataset(arguments.dataset, split=arguments.split)
+    fewshot_examples = dataset.select(random.sample(range(len(dataset)), arguments.num_fewshot_examples))
+
+    # generate unlabeled dataset using LLM
+    generated_unlabeled_dataset = generate_unlabeled_data(fewshot_examples, arguments)
+
+    # annotate unlabeled dataset using LLM
+    generated_annotated_dataset = annotate_dataset(fewshot_examples, generated_unlabeled_dataset, arguments)
+
+    print("")
+
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--llm", type=str, default="text-davinci-003")
     parser.add_argument("--max_generation_length", type=int, default=100)
-    parser.add_argument(
-        "--task_description", type=str, default="Generate similar texts."
-    )
+    parser.add_argument("--task_description", type=str, default="Generate similar texts.")
     parser.add_argument("--dataset", type=str, default="imdb")
     parser.add_argument("--split", type=str, default="train")
     parser.add_argument(
@@ -220,5 +258,6 @@ if __name__ == "__main__":
     parser.add_argument("--num_fewshot_examples", type=int, default=3)
     parser.add_argument("--max_prompt_calls", type=int, default=3)
     parser.add_argument("--support_examples_per_prompt", type=int, default=1)
+    parser.add_argument("--target_variable", type=str, default="label")
     args = parser.parse_args()
     run(args)
