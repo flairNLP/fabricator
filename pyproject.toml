@@ -1,2 +1,16 @@
 [tool.black]
 line-length = 119
+
+[tool.pylint.format]
+max-line-length = 119
+
+[tool.pylint.MASTER]
+ignore-patterns = '''test_.*\.py,
+    examples/.*\.py,
+    setup.py
+'''
+
+[tool.pylint."MESSAGE CONTROL"]
+disable = '''logging-fstring-interpolation,
+    missing-module-docstring,
+'''
