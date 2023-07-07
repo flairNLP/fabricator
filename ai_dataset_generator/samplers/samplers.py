@@ -168,15 +168,13 @@ def _infere_class_labels(dataset: Dataset, label_column: str) -> Dict[int, str]:
         class_labels = features[label_column].feature.names
     else:
         raise ValueError(
-            f"Label column {label_column} is of type {type(features[label_column])}. Expected Value, \
-                ClassLabel or Sequence"
+            f"Label column {label_column} is of type {type(features[label_column])}. Expected Value, "
+            f"ClassLabel or Sequence"
         )
 
     return dict(enumerate(class_labels))
 
 
-def _relative_complements(list_a: List, list_b: Union[List, Set]) -> Set:
+def _relative_complements(list1: List, list2: Union[List, Set]) -> Set:
     """a \\ b"""
-    set_a = set(list_a)
-    set_b = set(list_b)
-    return set_a - set_b
+    return set(list1) - set(list2)

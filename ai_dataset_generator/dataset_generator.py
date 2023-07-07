@@ -1,30 +1,55 @@
 import logging
 import random
 from typing import Optional, Union, Tuple
+from collections import defaultdict
 
 from datasets import Dataset
 from haystack.nodes import PromptNode
 from haystack.nodes import PromptTemplate as HaystackPromptTemplate
 
-from ai_dataset_generator.prompts import DataGenerationPrompt
+from ai_dataset_generator.prompts.base import LLMPrompt
 
 logger = logging.getLogger(__name__)
 
 
 class DatasetGenerator:
+    """The DatasetGenerator class is the main class of the ai_dataset_generator package.
+    It generates datasets based on a prompt template. The main function is generate()."""
+
     def __init__(self, prompt_node: PromptNode):
+        """Initialize the DatasetGenerator with a prompt node.
+
+        Args:
+            prompt_node (PromptNode): Prompt node / LLM from haystack.
+        """
         self.prompt_node = prompt_node
 
     def generate(
         self,
         support_examples: Dataset,
-        prompt_template: DataGenerationPrompt,
+        prompt_template: LLMPrompt,
         unlabeled_examples: Optional[Dataset] = None,
         support_examples_per_prompt: int = 2,
         num_samples_to_generate: int = 10,
         max_prompt_calls: int = 10,
         return_original_dataset: bool = False,
     ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
+        """Generate a dataset based on a prompt template and support examples.
+        Optionally, unlabeled examples can be provided to annotate unlabeled data.
+
+        Args:
+            support_examples (Dataset): Support examples to generate the dataset from.
+            prompt_template (LLMPrompt): Prompt template to generate the dataset with.
+            unlabeled_examples (Optional[Dataset], optional): Unlabeled examples to annotate. Defaults to None.
+            support_examples_per_prompt (int, optional): Number of support examples per prompt. Defaults to 2.
+            num_samples_to_generate (int, optional): Number of samples to generate. Defaults to 10.
+            max_prompt_calls (int, optional): Maximum number of prompt calls. Defaults to 10.
+            return_original_dataset (bool, optional): Whether to return the original dataset. Defaults to False.
+
+        Returns:
+            Union[Dataset, Tuple[Dataset, Dataset]]: Generated dataset or tuple of generated dataset and original
+            dataset.
+        """
         # Check if required variables of the prompt template occure in every data point
         assert all(
             field in support_examples.column_names for field in prompt_template.variables_for_examples
@@ -38,8 +63,8 @@ class DatasetGenerator:
                 prompt_template.input_variables[0], str
             ), "The input_variable must be a string, indicating the column to generate unlabeled data for."
 
-        generated_dataset = {}
-        original_dataset = {}
+        generated_dataset = defaultdict(list)
+        original_dataset = defaultdict(list)
 
         if unlabeled_examples is None:
             input_examples = iter(
@@ -62,7 +87,7 @@ class DatasetGenerator:
             )
 
             pred = self.prompt_node.run(
-                prompt_template=HaystackPromptTemplate(name="prompt_text", prompt_text=prompt_text),
+                prompt_template=HaystackPromptTemplate(prompt=prompt_text),
                 invocation_context=invocation_context,
             )[0]["results"]
 
@@ -74,20 +99,20 @@ class DatasetGenerator:
                     input_example, prompt_template.input_variables
                 )
                 for key, value in generated_sample.items():
-                    generated_dataset.setdefault(key, []).append(value)
+                    generated_dataset[key].append(value)
 
                 if type(pred) is not type(input_example[prompt_template.target_variable]):
                     try:
                         pred = type(input_example[prompt_template.target_variable])(pred)
                     except TypeError:
                         continue
-                generated_dataset.setdefault(prompt_template.target_variable, []).append(pred)
+                generated_dataset[prompt_template.target_variable].append(pred)
             else:
-                generated_dataset.setdefault(prompt_template.input_variables[0], []).append(pred)
+                generated_dataset[prompt_template.input_variables[0]].append(pred)
 
             if return_original_dataset:
                 for key, value in input_example.items():
-                    original_dataset.setdefault(key, []).append(value)
+                    original_dataset[key].append(value)
 
             if prompt_call_idx >= max_prompt_calls:
                 logger.info(f"Reached maximum number of prompt calls ({max_prompt_calls}).")
@@ -102,5 +127,5 @@ class DatasetGenerator:
 
         if return_original_dataset:
             return generated_dataset, original_dataset
-        else:
-            return generated_dataset
+
+        return generated_dataset
