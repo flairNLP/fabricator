@@ -1,9 +1,9 @@
 import logging
 import random
 import signal
-from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, Optional, Union, Tuple
+from collections import defaultdict
 
 from datasets import Dataset
 from haystack.nodes import PromptNode
@@ -11,6 +11,7 @@ from haystack.nodes import PromptTemplate as HaystackPromptTemplate
 
 from ai_dataset_generator.prompts import DataGenerationPrompt
 from ai_dataset_generator.utils import log_dir, create_timestamp_path
+from ai_dataset_generator.prompts.base import LLMPrompt
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,15 @@ def timeout_handler(signum, frame):
     raise GenerationTimeoutError("Generation timed out.")
 
 class DatasetGenerator:
+    """The DatasetGenerator class is the main class of the ai_dataset_generator package.
+    It generates datasets based on a prompt template. The main function is generate()."""
+
     def __init__(self, prompt_node: PromptNode, timeout: int = 60, max_tries: int = 3):
+        """Initialize the DatasetGenerator with a prompt node.
+
+        Args:
+            prompt_node (PromptNode): Prompt node / LLM from haystack.
+        """
         self.prompt_node = prompt_node
         self._base_log_dir = log_dir()
         self._timeout = timeout
@@ -48,7 +57,7 @@ class DatasetGenerator:
     def generate(
         self,
         support_examples: Dataset,
-        prompt_template: DataGenerationPrompt,
+        prompt_template: LLMPrompt,
         unlabeled_examples: Optional[Dataset] = None,
         support_examples_per_prompt: int = 2,
         num_samples_to_generate: int = 10,
@@ -56,22 +65,21 @@ class DatasetGenerator:
         return_original_dataset: bool = False,
         dry_run: bool = False,
     ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
-        """
-        Generates a dataset based on a prompt template and support examples.
+        """Generate a dataset based on a prompt template and support examples.
+        Optionally, unlabeled examples can be provided to annotate unlabeled data.
 
         Args:
-            support_examples: Examples to support the generation of new examples.
-            prompt_template: Prompt template to generate new examples.
-            unlabeled_examples: Unlabeled examples to generate new examples for.
-            support_examples_per_prompt: Number of support examples to use per prompt.
-            num_samples_to_generate: Number of samples to generate per prompt.
-            max_prompt_calls: Maximum number of calls to the LLM.
-            return_original_dataset: Whether to return the original dataset as well.
-            dry_run: Whether to actually generate the dataset or just return a dummy dataset.
+            support_examples (Dataset): Support examples to generate the dataset from.
+            prompt_template (LLMPrompt): Prompt template to generate the dataset with.
+            unlabeled_examples (Optional[Dataset], optional): Unlabeled examples to annotate. Defaults to None.
+            support_examples_per_prompt (int, optional): Number of support examples per prompt. Defaults to 2.
+            num_samples_to_generate (int, optional): Number of samples to generate. Defaults to 10.
+            max_prompt_calls (int, optional): Maximum number of prompt calls. Defaults to 10.
+            return_original_dataset (bool, optional): Whether to return the original dataset. Defaults to False.
 
         Returns:
-            Generated dataset, optionally together with the original dataset.
-
+            Union[Dataset, Tuple[Dataset, Dataset]]: Generated dataset or tuple of generated dataset and original
+            dataset.
         """
         # Check if required variables of the prompt template occure in every data point
         assert all(
@@ -151,6 +159,7 @@ class DatasetGenerator:
         prompt_template: DataGenerationPrompt,
         max_prompt_calls: int,
         num_samples_to_generate: int,
+        return_original_dataset: bool,
         dry_run: bool
     ):
         
@@ -192,7 +201,7 @@ class DatasetGenerator:
                 for key, value in generated_sample.items():
                     generated_dataset[key].append(value)
 
-                if not isinstance(prediction, type(input_example[prompt_template.target_variable]):
+                if not isinstance(prediction, type(input_example[prompt_template.target_variable])):
                     try:
                         prediction = type(input_example[prompt_template.target_variable])(prediction)
                     except TypeError:
@@ -201,14 +210,13 @@ class DatasetGenerator:
                             f"Could not convert prediction {prediction} to type {type(input_example[prompt_template.target_variable])}."
                         )
                         continue
-
                 generated_dataset[prompt_template.target_variable].append(prediction)
             else:
                 generated_dataset[prompt_template.input_variables[0]].append(prediction)
-            
-            # As long as we are not dealing with millions of examples, we can safely populate
-            for key, value in input_example.items():
-                original_dataset[key].append(value)
+
+            if return_original_dataset:
+                for key, value in input_example.items():
+                    original_dataset[key].append(value)
 
             if prompt_call_idx >= max_prompt_calls:
                 logger.info(f"Reached maximum number of prompt calls ({max_prompt_calls}).")
@@ -218,4 +226,10 @@ class DatasetGenerator:
                 logger.info(f"Generated {num_samples_to_generate} samples.")
                 break
 
-        return generated_dataset, original_dataset
+        generated_dataset = Dataset.from_dict(generated_dataset)
+        original_dataset = Dataset.from_dict(original_dataset)
+
+        if return_original_dataset:
+            return generated_dataset, original_dataset
+
+        return generated_dataset
