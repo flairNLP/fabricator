@@ -179,7 +179,7 @@ class ApplicationEvaluator:
 def generate_unlabeled_data(fewshot_examples, arguments):
     prompt = GenerateUnlabeledDataPrompt(
         input_variables=arguments.input_variables,
-        task_description=arguments.task_description,
+        task_description=arguments.task_description_generate,
     )
 
     prompt_node = PromptNode(
@@ -194,6 +194,20 @@ def generate_unlabeled_data(fewshot_examples, arguments):
         max_prompt_calls=arguments.max_prompt_calls,
         support_examples_per_prompt=arguments.support_examples_per_prompt,
     )
+
+    # add the empty target column with proper column type
+    original_dtype = fewshot_examples.features[arguments.target_variable].dtype
+    if original_dtype in ("float32", "float64"):
+        placeholder_value = -100000.0
+    elif original_dtype in ("int32", "int64"):
+        placeholder_value = -100000
+    elif original_dtype == "string":
+        placeholder_value = "-100000"
+    else:
+        raise ValueError("unsupported dtype {} - please define a placeholder value", original_dtype)
+    new_column = [placeholder_value] * len(generated_dataset)
+    generated_dataset = generated_dataset.add_column(arguments.target_variable, new_column)
+
     logger.info("generated dataset {}", generated_dataset)
 
     return generated_dataset
@@ -206,10 +220,8 @@ def annotate_dataset(fewshot_examples, generated_unlabeled_dataset, arguments):
         input_variables=arguments.input_variables,
         target_variable=arguments.target_variable,
         label_options=idx2label,
-        task_description=arguments.task_description,
+        task_description=arguments.task_description_annotate,
     )
-    raw_prompt = prompt.get_prompt_text(fewshot_examples)
-    print(raw_prompt)
 
     prompt_node = PromptNode(
         model_name_or_path=arguments.llm,
@@ -249,7 +261,12 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--llm", type=str, default="text-davinci-003")
     parser.add_argument("--max_generation_length", type=int, default=100)
-    parser.add_argument("--task_description", type=str, default="Generate similar texts.")
+    parser.add_argument("--task_description_generate", type=str, default="Generate similar texts.")
+    parser.add_argument(
+        "--task_description_annotate",
+        type=str,
+        default="Classify the review whether it's positive or negative: " "{label_options}.",
+    )
     parser.add_argument("--dataset", type=str, default="imdb")
     parser.add_argument("--split", type=str, default="train")
     parser.add_argument(

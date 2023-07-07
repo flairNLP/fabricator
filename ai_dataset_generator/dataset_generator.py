@@ -1,7 +1,7 @@
 import logging
 import random
-from typing import Optional, Union, Tuple
 from collections import defaultdict
+from typing import Optional, Union, Tuple
 
 from datasets import Dataset
 from haystack.nodes import PromptNode
@@ -105,6 +105,11 @@ class DatasetGenerator:
                     try:
                         pred = type(input_example[prompt_template.target_variable])(pred)
                     except TypeError:
+                        logger.warning(
+                            "could not convert prediction to correct type, prediction will not be added ({} != {})",
+                            type(pred),
+                            type(input_example[prompt_template.target_variable]),
+                        )
                         continue
                 generated_dataset[prompt_template.target_variable].append(pred)
             else:
