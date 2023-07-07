@@ -5,32 +5,35 @@ from argparse import ArgumentParser
 from datasets import load_dataset
 from haystack.nodes import PromptNode
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import DataGenerationPrompt
+from ai_dataset_generator.prompts import GenerateUnlabeledDataPrompt
 
 
-def run(args):
-    dataset = load_dataset(args.dataset, split=args.split)
-    fewshot_examples = dataset.select(random.sample(range(len(dataset)), args.num_fewshot_examples))
+def run(arguments):
+    """Generate unlabeled data for a given dataset and split."""
+    dataset = load_dataset(arguments.dataset, split=arguments.split)
+    fewshot_examples = dataset.select(random.sample(range(len(dataset)), arguments.num_fewshot_examples))
 
-    prompt = DataGenerationPrompt(
-        input_variables=args.input_variables,
-        output_format=args.output_format,
-        task_description=args.task_description,
+    prompt = GenerateUnlabeledDataPrompt(
+        input_variables=arguments.input_variables,
+        output_format=arguments.output_format,
+        task_description=arguments.task_description,
     )
     raw_prompt = prompt.get_prompt_text(fewshot_examples)
     print(raw_prompt)
 
     prompt_node = PromptNode(
-        model_name_or_path=args.llm, api_key=os.environ.get("OPENAI_API_KEY"), max_length=args.max_generation_length
+        model_name_or_path=arguments.llm,
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        max_length=arguments.max_generation_length,
     )
     generator = DatasetGenerator(prompt_node)
     generated_dataset = generator.generate(
-        support_examples=fewshot_examples,  # from above
-        prompt_template=prompt,  # from above
-        max_prompt_calls=args.max_prompt_calls,  # max number of calls to the LLM
-        support_examples_per_prompt=args.support_examples_per_prompt,  # number of support examples per prompt
+        support_examples=fewshot_examples,
+        prompt_template=prompt,
+        max_prompt_calls=arguments.max_prompt_calls,
+        support_examples_per_prompt=arguments.support_examples_per_prompt,
     )
-    if args.push_to_hub:
+    if arguments.push_to_hub:
         generated_dataset.push_to_hub("your-first-generated-dataset")
 
 
