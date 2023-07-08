@@ -1,8 +1,10 @@
 import os
 import random
 from argparse import ArgumentParser
+from datetime import datetime
 from pathlib import Path
 
+import datasets
 import evaluate
 import numpy as np
 import pandas as pd
@@ -30,20 +32,13 @@ class ApplicationEvaluator:
       our dataset generator
     """
 
-    def __init__(self):
-        # configuration (change these lines to your needs)
-        self.dataset_name = "imdb"
-        self.dataset_column_name_text = "text"
-        self.dataset_column_name_target = "label"
-        self.lm_name = "bert-base-uncased"
-        if torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        elif torch.backends.mps.is_available():
-            self.device = torch.device("mps")
-        else:
-            self.device = torch.device("cpu")
-        # manual overwrite of device if necessary
-        # self.device = torch.device("cuda:0")
+    def __init__(self, dataset_train: datasets.Dataset, dataset_test: datasets.Dataset, arguments):
+        assert len(arguments.input_variables) == 1, "currently only 1 input variable is supported"
+        self.dataset_column_name_text = arguments.input_variables[0]
+        self.dataset_column_name_target = arguments.target_variable
+        self.lm_name = arguments.lm
+        self.dataset_name = arguments.dataset
+        self.device = torch.device(arguments.torch_device)
         # for development: shorten the splits to k rows (disabled if None)
         self.dev_shorten_dataset_splits_to_k_rows = 10
         # pathname of the xlsx file to store the results
@@ -54,13 +49,14 @@ class ApplicationEvaluator:
         # create pandas dataframe
         self.df = pd.DataFrame()
 
-        # load the dataset
-        self.dataset = load_dataset(self.dataset_name)
-        logger.info("loaded dataset {}", self.dataset_name)
+        # datasets
+        self.dataset_train = dataset_train
+        self.dataset_test = dataset_test
 
         # get number of unique labels
-        self.num_labels = len(set(self.dataset["train"][self.dataset_column_name_target]))
-        logger.info("found {} labels in dataset {}", self.num_labels, self.dataset_name)
+        unique_labels = set(self.dataset_test[self.dataset_column_name_target])
+        self.num_labels = len(unique_labels)
+        logger.info("found {} labels in dataset {}: {}", self.num_labels, self.dataset_name, unique_labels)
 
         # initialize LM and its tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(self.lm_name)
@@ -69,37 +65,31 @@ class ApplicationEvaluator:
         )
         logger.info("initialized LM {}", self.lm_name)
 
-        # tokenize dataset
-        self.dataset_tokenized = self.dataset.map(
-            ApplicationEvaluator._tokenize_function,
-            batched=True,
-            fn_kwargs={
-                "tokenizer": self.tokenizer,
-                "dataset_column_name_text": self.dataset_column_name_text,
-            },
-        )
+        # tokenize datasets
+        self.dataset_train_tokenized = self.tokenize_dataset(self.dataset_train)
+        self.dataset_test_tokenized = self.tokenize_dataset(self.dataset_test)
         self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
-        logger.info("tokenized dataset {}", self.dataset_name)
+        logger.info("tokenized datasets", self.dataset_name)
 
         # shorten dataset splits if necessary
         if self.dev_shorten_dataset_splits_to_k_rows is not None:
-            self.dataset_tokenized["train"] = self.dataset_tokenized["train"].select(
+            self.dataset_train_tokenized = self.dataset_train_tokenized.select(
                 range(self.dev_shorten_dataset_splits_to_k_rows)
             )
-            self.dataset_tokenized["test"] = self.dataset_tokenized["test"].select(
+            self.dataset_test_tokenized = self.dataset_test_tokenized.select(
                 range(self.dev_shorten_dataset_splits_to_k_rows)
             )
-            logger.info(
-                "DEV: shortened dataset splits to {} rows",
+            logger.error(
+                "--- !!! DEV !!!: shortened datasets to {} rows !!! ---",
                 self.dev_shorten_dataset_splits_to_k_rows,
             )
 
         # create trainer
-        training_args = TrainingArguments("test-trainer", use_mps_device=True)
+        training_args = TrainingArguments("trainer", use_mps_device=True)
         trainer = Trainer(
             self.lm,
             training_args,
-            train_dataset=self.dataset_tokenized["train"],
+            train_dataset=self.dataset_train_tokenized,
             data_collator=self.data_collator,
             tokenizer=self.tokenizer,
             compute_metrics=ApplicationEvaluator.compute_metrics,
@@ -108,12 +98,22 @@ class ApplicationEvaluator:
         # train LM on original dataset
         logger.info("training LM on original dataset {}", self.dataset_name)
         trainer.train()
-        eval_results = trainer.evaluate(self.dataset_tokenized["test"])
+        eval_results = trainer.evaluate(self.dataset_test_tokenized)
         self.add_evaluation_result(
             "original",
-            len(self.dataset_tokenized["train"]),
-            len(self.dataset_tokenized["test"]),
+            len(self.dataset_train_tokenized),
+            len(self.dataset_test_tokenized),
             eval_results,
+        )
+
+    def tokenize_dataset(self, dataset):
+        return dataset.map(
+            ApplicationEvaluator._tokenize_function,
+            batched=True,
+            fn_kwargs={
+                "tokenizer": self.tokenizer,
+                "dataset_column_name_text": self.dataset_column_name_text,
+            },
         )
 
     @staticmethod
@@ -158,6 +158,7 @@ class ApplicationEvaluator:
                 pd.DataFrame(
                     [
                         {
+                            "datetime": datetime.utcnow(),
                             "run_type": run_type,
                             "training_size": training_size,
                             "test_size": test_size,
@@ -173,7 +174,7 @@ class ApplicationEvaluator:
         )
 
         self.df.to_excel(self.results_pathname)
-        logger.info("saved {} results to {}", len(self.df), self.results_pathname)
+        logger.info("saved {} results to {}", len(self.df), self.results_pathname.resolve())
 
 
 def generate_unlabeled_data(fewshot_examples, arguments):
@@ -241,18 +242,42 @@ def annotate_dataset(fewshot_examples, generated_unlabeled_dataset, arguments):
     return generated_dataset
 
 
-def run(arguments):
-    # evaluator = ApplicationEvaluator()
+def get_original_dataset_splits(arguments):
+    # load the dataset
+    dataset = load_dataset(arguments.dataset)
+    logger.info("loaded dataset {}", arguments.dataset)
 
-    # load the dataset split and some few shot examples
-    dataset = load_dataset(arguments.dataset, split=arguments.split)
-    fewshot_examples = dataset.select(random.sample(range(len(dataset)), arguments.num_fewshot_examples))
+    return dataset[arguments.split_train], dataset[arguments.split_test]
 
+
+def generate_and_annotate_dataset(fewshot_examples, arguments):
     # generate unlabeled dataset using LLM
     generated_unlabeled_dataset = generate_unlabeled_data(fewshot_examples, arguments)
 
     # annotate unlabeled dataset using LLM
     generated_annotated_dataset = annotate_dataset(fewshot_examples, generated_unlabeled_dataset, arguments)
+
+    return generated_annotated_dataset
+
+
+def run(arguments):
+    # get the original dataset and its splits
+    dataset_train, dataset_test = get_original_dataset_splits(arguments)
+
+    # train and test the original dataset
+    ApplicationEvaluator(dataset_train, dataset_test, arguments)
+
+    # load the dataset split and some few shot examples
+    fewshot_examples = dataset_train.select(random.sample(range(len(dataset_train)), arguments.num_fewshot_examples))
+
+    # generate a dataset and annotate it using the power of LLM
+    #generated_annotated_dataset = generate_and_annotate_dataset(fewshot_examples, arguments)
+    # dev (and to save Jonas from his fear of being poor very soon because using the LLM
+    # costs around 3 cents, i.e., is "expensive")
+    #generated_annotated_dataset.save_to_disk(
+    #    f"generated_annotated_dataset_{arguments.dataset}_{len(generated_annotated_dataset)}.dataset",
+    #)
+    generated_annotated_dataset = datasets.load_from_disk("generated_annotated_dataset_imdb_3.dataset")
 
     print("")
 
@@ -260,6 +285,7 @@ def run(arguments):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--llm", type=str, default="text-davinci-003")
+    parser.add_argument("--lm", type=str, default="bert-base-uncased")
     parser.add_argument("--max_generation_length", type=int, default=100)
     parser.add_argument("--task_description_generate", type=str, default="Generate similar texts.")
     parser.add_argument(
@@ -268,7 +294,11 @@ if __name__ == "__main__":
         default="Classify the review whether it's positive or negative: " "{label_options}.",
     )
     parser.add_argument("--dataset", type=str, default="imdb")
-    parser.add_argument("--split", type=str, default="train")
+    parser.add_argument("--split_train", type=str, default="train")
+    parser.add_argument("--split_test", type=str, default="test")
+    # parser.add_argument(
+    #    "--input_variables", type=str, nargs="+", default=["text"]
+    # )  # Column names as they occur in the dataset
     parser.add_argument(
         "--input_variables", type=str, nargs="+", default=["text"]
     )  # Column names as they occur in the dataset
@@ -276,5 +306,6 @@ if __name__ == "__main__":
     parser.add_argument("--max_prompt_calls", type=int, default=3)
     parser.add_argument("--support_examples_per_prompt", type=int, default=1)
     parser.add_argument("--target_variable", type=str, default="label")
+    parser.add_argument("--torch_device", type=str, default="mps")
     args = parser.parse_args()
     run(args)
