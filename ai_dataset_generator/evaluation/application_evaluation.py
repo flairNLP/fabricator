@@ -295,7 +295,7 @@ def run(arguments):
     while generated_annotated_dataset is None or len(generated_annotated_dataset) < arguments.max_size_generated:
         if arguments.devmode:
             # pretend we are generating and annotating a new dataset by always loading
-            # the same one from disk (@Jonas: love you buddy)
+            # the same one from disk to save money (@Jonas: love you buddy)
             try:
                 current_generated_annotated_dataset = datasets.load_from_disk(
                     DATASETPATH / "generated_annotated_dataset_imdb_20_dev.dataset"
