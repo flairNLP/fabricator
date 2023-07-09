@@ -1,6 +1,6 @@
 # Dataset generation using LLMs
 
-This repository contains the code for generating datasets using LLMs.
+We use LLMs to generate and annotate unlabeled data for supervised learning.
 
 ## Setup
 
@@ -11,10 +11,6 @@ conda create -y -n aidatasetgenerator python=3.10
 conda activate aidatasetgenerator
 pip install -r requirements.txt
 ```
-
-## Idea
-
-We use LLMs to generate and annotate unlabeled data for supervised learning.
 
 ## Usage
 
