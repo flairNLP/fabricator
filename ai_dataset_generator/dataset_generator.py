@@ -9,7 +9,7 @@ from datasets import Dataset
 from haystack.nodes import PromptNode
 from haystack.nodes import PromptTemplate as HaystackPromptTemplate
 
-from ai_dataset_generator.utils import log_dir, create_timestamp_path
+from ai_dataset_generator.utils import log_dir, create_timestamp_path, infer_dummy_example
 from ai_dataset_generator.prompts.base import LLMPrompt
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class DatasetGenerator:
     """The DatasetGenerator class is the main class of the ai_dataset_generator package.
     It generates datasets based on a prompt template. The main function is generate()."""
 
-    def __init__(self, prompt_node: PromptNode):
+    def __init__(self, prompt_node: PromptNode, max_tries: int = 10):
         """Initialize the DatasetGenerator with a prompt node.
 
         Args:
@@ -27,6 +27,7 @@ class DatasetGenerator:
         """
         self.prompt_node = prompt_node
         self._base_log_dir = log_dir()
+        self._max_tries = max_tries
 
     def _setup_log(self, prompt_template: LLMPrompt) -> Path:
         """For every generation run create a new log file.
@@ -108,7 +109,9 @@ class DatasetGenerator:
 
         return generated_dataset
 
-    def _try_generate(self, prompt_text: str, invocation_context: Dict, dry_run: bool) -> Optional[str]:
+    def _try_generate(
+        self, prompt_text: str, prompt_template: LLMPrompt, invocation_context: Dict, dry_run: bool
+    ) -> Optional[str]:
         """Tries to generate a single example. Restrict the time spent on this.
 
         Args:
@@ -119,9 +122,9 @@ class DatasetGenerator:
         Returns:
             Generated example
         """
-        # TODO: Some sensible return value for dummy
+
         if dry_run:
-            return "Label"
+            return infer_dummy_example(prompt_template)
 
         # Haystack internally uses timeouts and retries, so we dont have to do it
         # We dont catch authentification errors here, because we want to fail fast
@@ -158,7 +161,7 @@ class DatasetGenerator:
                 input_example, prompt_template.input_variables
             )
 
-            prediction = self._try_generate(prompt_text, invocation_context, dry_run)
+            prediction = self._try_generate(prompt_text, prompt_template, invocation_context, dry_run)
 
             if prediction is None:
                 current_tries_left -= 1

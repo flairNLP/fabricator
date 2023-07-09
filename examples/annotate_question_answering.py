@@ -41,6 +41,7 @@ def run(arguments):
     )
 
     generated_dataset = postprocess_squad_format(generated_dataset)
+
     if arguments.push_to_hub:
         generated_dataset.push_to_hub("your-first-generated-qa-dataset")
         original_dataset.push_to_hub("original-qa-dataset-to-compare")
