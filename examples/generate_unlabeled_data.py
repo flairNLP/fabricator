@@ -31,8 +31,8 @@ def run(arguments):
         prompt_template=prompt,
         max_prompt_calls=arguments.max_prompt_calls,
         support_examples_per_prompt=arguments.support_examples_per_prompt,
-        dry_run=True,
     )
+
     if arguments.push_to_hub:
         generated_dataset.push_to_hub("your-first-generated-dataset")
 
