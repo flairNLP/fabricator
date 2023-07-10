@@ -5,21 +5,24 @@ from argparse import ArgumentParser
 from datasets import load_dataset
 from haystack.nodes import PromptNode
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import ClassLabelPrompt
+from ai_dataset_generator.prompts import ClassLabelPrompt, infer_prompt_from_dataset
 
 
 def run(arguments):
     """Generate annotations for unlabeled data for a given dataset and split."""
     dataset = load_dataset(arguments.dataset, split=arguments.split)
     fewshot_examples = dataset.select(random.sample(range(len(dataset)), arguments.num_fewshot_examples))
-    idx2label = dict(enumerate(fewshot_examples.features[arguments.target_variable].names))
 
-    prompt = ClassLabelPrompt(
-        input_variables=arguments.input_variables,
-        target_variable=arguments.target_variable,
-        label_options=idx2label,
-        task_description=arguments.task_description,
-    )
+    # idx2label = dict(enumerate(fewshot_examples.features[arguments.target_variable].names))
+    #
+    # prompt = ClassLabelPrompt(
+    #     input_variables=arguments.input_variables,
+    #     target_variable=arguments.target_variable,
+    #     label_options=idx2label,
+    #     task_description=arguments.task_description,
+    # )
+    prompt = infer_prompt_from_dataset(dataset)
+
     raw_prompt = prompt.get_prompt_text(fewshot_examples)
     print(raw_prompt)
 

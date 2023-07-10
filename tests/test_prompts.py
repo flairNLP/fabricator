@@ -1,8 +1,8 @@
 import unittest
 
-from datasets import load_dataset
+from datasets import load_dataset, QuestionAnsweringExtractive, TextClassification, Summarization
 
-from ai_dataset_generator.prompts import TextLabelPrompt, ClassLabelPrompt, TokenLabelPrompt
+from ai_dataset_generator.prompts import TextLabelPrompt, ClassLabelPrompt, TokenLabelPrompt, infer_prompt_from_task_template
 
 
 class TestTextLabelPrompt(unittest.TestCase):
@@ -150,3 +150,25 @@ class TestTokenLabelPrompt(unittest.TestCase):
 
         raw_prompt = prompt.get_prompt_text(fewshot_examples)
         self.assertEqual(raw_prompt, "Given the following classification examples, annotate the unlabeled example with a prediction that must correspond to exactly one of the following labels: 0: O, 1: B-PER, 2: I-PER, 3: B-ORG, 4: I-ORG, 5: B-LOC, 6: I-LOC, 7: B-MISC, 8: I-MISC.\n\nTokens: ['Peter', 'Blackburn']\nNer_tags: [1, 2]\n\nTokens: ['BRUSSELS', '1996-08-22']\nNer_tags: [5, 0]\n\nTokens: ['The', 'European', 'Commission', 'said', 'on', 'Thursday', 'it', 'disagreed', 'with', 'German', 'advice', 'to', 'consumers', 'to', 'shun', 'British', 'lamb', 'until', 'scientists', 'determine', 'whether', 'mad', 'cow', 'disease', 'can', 'be', 'transmitted', 'to', 'sheep', '.']\nNer_tags: [0, 3, 4, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]\n\nTokens: {tokens}\nNer_tags: ")
+
+    def test_auto_infer_text_label_prompt(self):
+        """Test auto inference of TextLabelPrompt from QuestionAnsweringExtractive task template"""
+        task_template = QuestionAnsweringExtractive()
+        prompt = infer_prompt_from_task_template(task_template)
+        self.assertIsInstance(prompt, TextLabelPrompt)
+        self.assertEqual(prompt.input_variables, ["context", "question"])
+        self.assertEqual(prompt.target_variable, "answer")
+
+    def test_auto_infer_class_label_prompt(self):
+        """Test auto inference of ClassLabelPrompt from TextClassification task template"""
+        task_template = TextClassification()
+        task_template.label_schema["labels"].names = ["neg", "pos"]
+        prompt = infer_prompt_from_task_template(task_template)
+        self.assertIsInstance(prompt, ClassLabelPrompt)
+        self.assertEqual(prompt.input_variables, ["text"])
+        self.assertEqual(prompt.target_variable, "labels")
+
+    def test_auto_infer_fails_for_unsupported_task(self):
+        """Test auto inference of prompt fails for unsupported task template Summarization"""
+        with self.assertRaises(ValueError):
+            infer_prompt_from_task_template(Summarization())
