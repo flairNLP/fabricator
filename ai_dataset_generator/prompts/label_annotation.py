@@ -1,6 +1,8 @@
 import logging
 from typing import Union, List
 
+from datasets import Dataset, QuestionAnsweringExtractive, TextClassification, TaskTemplate
+
 from .base import LLMPrompt, ClassificationOptions
 
 logger = logging.getLogger(__name__)
@@ -91,3 +93,37 @@ class TokenLabelPrompt(LLMPrompt):
             label_options=label_options,
             **kwargs,
         )
+
+
+def infer_prompt_from_task_template(task_template: TaskTemplate):
+    """Infer TextLabelPrompt or ClassLabelPrompt with correct parameters from a task template's metadata."""
+    if isinstance(task_template, QuestionAnsweringExtractive):
+        return TextLabelPrompt(
+            input_variables=[task_template.context_column, task_template.question_column],
+            target_variable="answer",  # assuming the dataset was preprocessed with preprocess_squad_format otherwise
+            # dataset.task_templates[0]["answers_column"]
+            task_description="Given a context and a question, generate an answer that occurs exactly and only once in "
+                             "the text.",
+        )
+    elif isinstance(task_template, TextClassification):
+        return ClassLabelPrompt(
+            input_variables=[task_template.text_column],
+            target_variable=task_template.label_column,
+            label_options=dict(enumerate(task_template.label_schema["labels"].names))
+        )
+    else:
+        raise ValueError(f"Automatic prompt is only supported for QuestionAnsweringExtractive and "
+                         f"TextClassification tasks but not for {type(task_template)}. You need to "
+                         f"specify the prompt manually.")
+
+
+def infer_prompt_from_dataset(dataset: Dataset):
+    """Infer TextLabelPrompt or ClassLabelPrompt with correct parameters from a dataset's metadata."""
+    if not dataset.task_templates:
+        raise ValueError("Dataset must have exactly one task template but there is none. You need to specify the "
+                         "prompt manually.")
+    elif len(dataset.task_templates) > 1:
+        raise ValueError(f"Automatic prompt is only supported for datasets with exactly one task template but yours "
+                         "has {len(dataset.task_templates)}. You need to specify the prompt manually.")
+    else:
+        return infer_prompt_from_task_template(dataset.task_templates[0])
