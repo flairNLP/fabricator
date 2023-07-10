@@ -104,7 +104,7 @@ def ml_mc_sampler(dataset: Dataset, labels_column: str, num_examples: int) -> Da
 
     pbar = tqdm(total=num_examples, desc="Sampling")
 
-    unique_classes_sampled = set()
+    unique_classes_sampled: Set[str] = set()
     total_examples_sampled = 0
 
     sampled_indices = []
