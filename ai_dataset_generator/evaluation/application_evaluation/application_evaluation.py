@@ -22,7 +22,7 @@ from transformers import TrainingArguments, Trainer
 from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.prompts import GenerateUnlabeledDataPrompt, ClassLabelPrompt
 
-BASEPATH = Path("evaluation")
+BASEPATH = Path("evaluation/application_evaluation")
 RESULTSPATH = BASEPATH / "results"
 DATASETPATH = BASEPATH / "datasets"
 BASEPATH.mkdir(parents=True, exist_ok=True)
