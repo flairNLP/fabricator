@@ -14,11 +14,10 @@ class TestTransformationsTextClassification(unittest.TestCase):
         self.input_variable = "text"
         self.target_variable = "coarse_label"
         self.dataset = load_dataset("trec", split="train")
-        self.id2label = dict(enumerate(self.dataset.features[self.target_variable].names))
 
     def test_label_ids_to_textual_label(self):
         """Test transformation output only"""
-        dataset, label_options = label_ids_to_textual_labels(self.dataset, self.target_variable, self.id2label)
+        dataset, label_options = convert_label_ids_to_text(self.dataset, self.target_variable)
         self.assertEqual(len(label_options), 6)
         self.assertEqual(set(label_options), set(self.dataset.features[self.target_variable].names))
         self.assertEqual(type(dataset[0][self.target_variable]), str)
@@ -27,7 +26,7 @@ class TestTransformationsTextClassification(unittest.TestCase):
 
     def test_formatting_with_textual_labels(self):
         """Test formatting with textual labels"""
-        dataset, label_options = label_ids_to_textual_labels(self.dataset, self.target_variable, self.id2label)
+        dataset, label_options = convert_label_ids_to_text(self.dataset, self.target_variable)
         fewshot_examples = dataset.select([1, 2, 3])
         prompt = ClassLabelPrompt(
             input_variables=self.input_variable,
@@ -49,10 +48,13 @@ class TestTransformationsTextClassification(unittest.TestCase):
             "NUM": "Number",
             "LOC": "Location"
         }
-        id2label = replace_class_labels(self.id2label, extended_mapping)
-        self.assertIn("Location", id2label.values())
-        self.assertNotIn("LOC", id2label.values())
-        dataset, label_options = label_ids_to_textual_labels(self.dataset, self.target_variable, id2label)
+        dataset, label_options = convert_label_ids_to_text(
+            self.dataset,
+            self.target_variable,
+            expanded_label_mapping=extended_mapping
+        )
+        self.assertIn("Location", label_options)
+        self.assertNotIn("LOC", label_options)
         fewshot_examples = dataset.select([1, 2, 3])
         prompt = ClassLabelPrompt(
             input_variables=self.input_variable,
@@ -67,18 +69,15 @@ class TestTransformationsTextClassification(unittest.TestCase):
 
     def test_textual_labels_to_label_ids(self):
         """Test conversion back to label ids"""
-        dataset, label_options = label_ids_to_textual_labels(self.dataset, self.target_variable, self.id2label)
-        self.assertIn(dataset[0][self.target_variable], self.id2label.values())
-        dataset = textual_labels_to_label_ids(dataset, self.target_variable, self.id2label)
-        self.assertIn(dataset[0][self.target_variable], self.id2label.keys())
+        dataset, label_options = convert_label_ids_to_text(self.dataset, self.target_variable)
+        self.assertIn(dataset[0][self.target_variable], label_options)
+        dataset = dataset.class_encode_column(self.target_variable)
+        self.assertIn(dataset[0][self.target_variable], range(len(label_options)))
 
     def test_false_inputs_raises_error(self):
         """Test that false inputs raise errors"""
         with self.assertRaises(AttributeError):
-            dataset, label_options = label_ids_to_textual_labels(self.target_variable, self.dataset, self.id2label)
-
-        with self.assertRaises(AttributeError):
-            dataset, label_options = label_ids_to_textual_labels(self.id2label, self.target_variable, self.dataset)
+            dataset, label_options = convert_label_ids_to_text(self.target_variable, self.dataset)
 
 
 class TestTransformationsTokenClassification(unittest.TestCase):

@@ -4,9 +4,7 @@ import random
 
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Union, Tuple
-
 from collections import defaultdict
-from typing import Optional, Union, Tuple
 
 from datasets import Dataset
 from haystack.nodes import PromptNode
