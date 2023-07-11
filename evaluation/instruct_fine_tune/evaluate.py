@@ -13,21 +13,13 @@ from ai_dataset_generator.prompts import TokenLabelPrompt
 
 
 ner_prompt = (
-    "Write a response to the question or task specified in the instruction. "
-    "Note the input that provides further context.\n\n"
-    "Instruction:\n{instruction}\n\nResponse:"
-)
-
-ner_prompt = (
     "Given the following text. Annotate the example and choose your annotations from: {label_options}"
 )
 
-def main():
+def main(args):
 
-    use_cached = True
-
-    model_name_or_path = "EleutherAI/pythia-70M-deduped"
-    dataset = load_dataset("conll2003", split="validation")
+    # model_name_or_path = "EleutherAI/pythia-70M-deduped"
+    dataset = load_dataset(args.dataset, split=args.split)
     fewshot_examples = dataset.select(random.sample(range(len(dataset)), 3))
 
     prompt = TokenLabelPrompt(
@@ -42,19 +34,21 @@ def main():
 
     unlabeled_data = dataset
 
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model_name_or_path, eos_token="</s>", bos_token="<s>", unk_token="<unk>"
+    )
+
     model = AutoModelForCausalLM.from_pretrained(
-        model_name_or_path,
+        args.model_name_or_path,
         trust_remote_code=True
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+    prompt_node = PromptNode(
+        args.model_name_or_path,
+        model_kwargs={"tokenizer": tokenizer, "task_name": "text-generation", "device": "cuda"}
+    )
 
-    # prompt_node = PromptNode(
-    #     model_name_or_path,
-    #     model_kwargs={"model": model, "tokenizer": tokenizer}
-    # )
-
-    if not use_cached:
+    if not args.use_cached:
 
         prompt_node = PromptNode(
             model_name_or_path="text-davinci-003",
@@ -81,6 +75,7 @@ def main():
 
 
 def post_process(generated_samples):
+    """Some heuristics to clean up the generated samples"""
 
     def _post_process(generated_sample):
 
@@ -105,6 +100,7 @@ def post_process(generated_samples):
     return generated_samples.map(_post_process)
 
 def build_gold_and_prediction_pairs(dataset, generated_dataset):
+    """Builds a list of gold and predicted labels for each sample in the dataset"""
 
     golds = []
     predictions = []
@@ -138,4 +134,12 @@ def evaluate(dataset, generated_dataset):
 
 
 if __name__ == "__main__":
-    main()
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--model_name_or_path", type=str, default="EleutherAI/pythia-70M-deduped")
+    parser.add_argument("--dataset_name", type=str, default="conll2003")
+    parser.add_argument("--split", type=str, default="validation")
+    parser.add_argument("--use_cached", type=bool, default=True)
+
+    main(args)
