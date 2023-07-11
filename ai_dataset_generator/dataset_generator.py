@@ -1,9 +1,12 @@
 import json
 import logging
 import random
+
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Union, Tuple
+
 from collections import defaultdict
+from typing import Optional, Union, Tuple
 
 from datasets import Dataset
 from haystack.nodes import PromptNode
@@ -193,6 +196,7 @@ class DatasetGenerator:
                     )
 
                 generated_dataset[prompt_template.target_variable].append(prediction)
+
             else:
                 generated_dataset[prompt_template.input_variables[0]].append(prediction)
 
