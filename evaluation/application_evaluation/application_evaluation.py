@@ -21,7 +21,7 @@ from transformers import TrainingArguments, Trainer
 
 from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.dataset_transformations.text_classification import \
-    convert_labels_to_texts
+    convert_label_ids_to_texts
 from ai_dataset_generator.prompts import GenerateUnlabeledDataPrompt, ClassLabelPrompt
 
 BASEPATH = Path("evaluation/application_evaluation")
@@ -299,7 +299,7 @@ def run(arguments):
         "positive": "A positive movie review.",
     }
 
-    dataset_train, label_options = convert_labels_to_texts(
+    dataset_train, label_options = convert_label_ids_to_texts(
         dataset_train,
         arguments.target_variable,
         expanded_label_mapping=expanded_label_mapping,
