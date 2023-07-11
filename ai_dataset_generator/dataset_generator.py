@@ -9,6 +9,7 @@ from collections import defaultdict
 from datasets import Dataset
 from haystack.nodes import PromptNode
 from haystack.nodes import PromptTemplate as HaystackPromptTemplate
+from tqdm import tqdm
 
 from ai_dataset_generator.utils import log_dir, create_timestamp_path, infer_dummy_example
 from ai_dataset_generator.prompts.base import LLMPrompt
@@ -88,11 +89,11 @@ class DatasetGenerator:
             ), "The input_variable must be a string, indicating the column to generate unlabeled data for."
 
         if unlabeled_examples is None:
-            input_examples = iter(
-                max(max_prompt_calls, num_samples_to_generate) * [{prompt_template.input_variables[0]: ""}]
-            )
+            input_examples = max(max_prompt_calls, num_samples_to_generate) * [
+                {prompt_template.input_variables[0]: ""}
+            ]
         else:
-            input_examples = iter(unlabeled_examples)
+            input_examples = unlabeled_examples
 
         generated_dataset, original_dataset = self._inner_generate_loop(
             input_examples,  # type: ignore
@@ -153,7 +154,9 @@ class DatasetGenerator:
         generated_dataset = defaultdict(list)
         original_dataset = defaultdict(list)
 
-        for prompt_call_idx, input_example in enumerate(input_examples, start=1):
+        for prompt_call_idx, input_example in tqdm(
+            enumerate(input_examples, start=1), desc="Generating dataset", total=len(input_examples)
+        ):
             sampled_support_indices = random.sample(range(len(support_examples)), support_examples_per_prompt)
             sampled_support_examples = support_examples.select(sampled_support_indices)
 
