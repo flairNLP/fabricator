@@ -1,14 +1,17 @@
 from typing import Union, List
+
 from .base import LLMPrompt
 
 
 class GenerateUnlabeledDataPrompt(LLMPrompt):
     """Prompt for generating unlabeled data."""
 
+    DEFAULT_TASK_DESCRIPTION = "Generate similar texts. Your answer must be in the same format as the examples."
+
     def __init__(
         self,
         input_variables: Union[List[str], str],
-        task_description: str = "Generate similar texts. Your answer must be in the same format as the examples.",
+        task_description: str = DEFAULT_TASK_DESCRIPTION,
         **kwargs,
     ):
         """Prompt for generating unlabeled data.
