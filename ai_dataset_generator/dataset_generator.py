@@ -247,6 +247,7 @@ class DatasetGenerator:
             return target_type(prediction)
         except ValueError:
             logger.warning(
-                f"Could not convert prediction {repr(prediction)} to type {target_type}. Returning original prediction."
+                f"Could not convert prediction {repr(prediction)} to type {target_type}. "
+                f"Returning original prediction."
             )
             return prediction
