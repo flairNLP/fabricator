@@ -1,6 +1,7 @@
 import argparse
 import os
 import random
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
@@ -231,9 +232,7 @@ def generate_unlabeled_data(fewshot_examples, arguments):
     return generated_dataset
 
 
-def annotate_dataset(
-    fewshot_examples, generated_unlabeled_dataset, arguments, label_options=None, one_sentence_description=None
-):
+def annotate_dataset(fewshot_examples, generated_unlabeled_dataset, arguments, label_options=None):
     # if no label options are provided, generate them adhoc from the dataset
     if label_options is None:
         label_options = dict(enumerate(fewshot_examples.features[arguments.target_variable].names))
@@ -241,8 +240,8 @@ def annotate_dataset(
     task_description = arguments.task_description_annotate
 
     # if a description for each label is described, add it to the task description
-    if one_sentence_description:
-        label_explanations = "\n".join([f"{k}: {v}" for k, v in one_sentence_description.items()])
+    if arguments.human_friendly_label2description:
+        label_explanations = "\n".join([f"{k}: {v}" for k, v in arguments.human_friendly_label2description.items()])
         task_description = task_description + "\n\nEach label is described as follows:\n" + label_explanations
 
     prompt = ClassLabelPrompt(
@@ -278,11 +277,11 @@ def get_original_dataset_splits(arguments):
     return dataset[arguments.split_train], dataset[arguments.split_test]
 
 
-def generate_and_annotate_dataset(fewshot_examples, arguments, expanded_label_mapping, one_sentence_description):
+def generate_and_annotate_dataset(fewshot_examples, arguments):
     fewshot_examples, label_options = convert_label_ids_to_texts(
         fewshot_examples,
         arguments.target_variable,
-        expanded_label_mapping=expanded_label_mapping,
+        expanded_label_mapping=arguments.label2human_friendly_label,
         return_label_options=True,
     )
 
@@ -291,7 +290,7 @@ def generate_and_annotate_dataset(fewshot_examples, arguments, expanded_label_ma
 
     # annotate unlabeled dataset using LLM
     generated_annotated_dataset = annotate_dataset(
-        fewshot_examples, generated_unlabeled_dataset, arguments, label_options, one_sentence_description
+        fewshot_examples, generated_unlabeled_dataset, arguments, label_options
     )
 
     generated_annotated_dataset = generated_annotated_dataset.class_encode_column(arguments.target_variable)
@@ -299,22 +298,33 @@ def generate_and_annotate_dataset(fewshot_examples, arguments, expanded_label_ma
     return generated_annotated_dataset
 
 
+def preprocess_arguments(arguments):
+    arg_dict = vars(arguments)
+
+    expanded_label_mapping = {
+        "0": "negative",
+        "1": "positive",
+    }
+    arg_dict["label2human_friendly_label"] = expanded_label_mapping
+    one_sentence_description = {
+        "negative": "A negative movie review.",
+        "positive": "A positive movie review.",
+    }
+    arg_dict["human_friendly_label2description"] = one_sentence_description
+
+    return argparse.Namespace(**arg_dict)
+
+
 def run(arguments):
+    # preprocessing of arguments
+    arguments = preprocess_arguments(arguments)
+
     # get the original dataset and its splits
     dataset_train, dataset_test = get_original_dataset_splits(arguments)
 
     # train and test the original dataset
     if arguments.traintest_on_original_dataset:
         ApplicationEvaluator(dataset_train, dataset_test, "original", arguments)
-
-    expanded_label_mapping = {
-        "0": "negative",
-        "1": "positive",
-    }
-    one_sentence_description = {
-        "negative": "A negative movie review.",
-        "positive": "A positive movie review.",
-    }
 
     # TODO we could also use our own generated examples as few shot examples in later
     #  iterations in the repeating process below
@@ -349,12 +359,7 @@ def run(arguments):
                 )
         else:
             # generate a dataset and annotate it using the power of LLM
-            current_generated_annotated_dataset = generate_and_annotate_dataset(
-                fewshot_examples,
-                arguments,
-                expanded_label_mapping=expanded_label_mapping,
-                one_sentence_description=one_sentence_description,
-            )
+            current_generated_annotated_dataset = generate_and_annotate_dataset(fewshot_examples, arguments)
 
         # extend the overall dataset with the newly generated one
         if generated_annotated_dataset is None:
@@ -366,6 +371,7 @@ def run(arguments):
         texts = generated_annotated_dataset["text"]
         labels = generated_annotated_dataset["label"]
         logger.info("extended generated dataset to size {}", len(generated_annotated_dataset))
+        logger.debug("label distribution: {}", Counter(labels))
 
         # save the generated dataset to disk
         generated_annotated_dataset.save_to_disk(
@@ -398,8 +404,12 @@ if __name__ == "__main__":
     parser.add_argument("--target_variable", type=str, default="label")
     parser.add_argument("--torch_device", type=str, default="mps")
     parser.add_argument("--devmode", action="store_true", default=False)
-    parser.add_argument("--max_size_generated", type=int, default=10)
-    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=True)
-    # parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2humanfriendlylabel")
+    parser.add_argument("--max_size_generated", type=int, default=200)
+    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=False)
+    parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2humanfriendlylabel")
+    parser.add_argument(
+        "--hfl2d", action="append", type=lambda kv: kv.split("="), dest="humanfriendlylabel2description"
+    )
     args = parser.parse_args()
+    args = preprocess_arguments(args)
     run(args)
