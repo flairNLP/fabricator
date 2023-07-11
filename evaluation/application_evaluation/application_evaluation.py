@@ -404,7 +404,7 @@ if __name__ == "__main__":
     parser.add_argument("--target_variable", type=str, default="label")
     parser.add_argument("--torch_device", type=str, default="mps")
     parser.add_argument("--devmode", action="store_true", default=False)
-    parser.add_argument("--max_size_generated", type=int, default=200)
+    parser.add_argument("--max_size_generated", type=int, default=20)
     parser.add_argument("--traintest_on_original_dataset", action="store_true", default=False)
     parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2humanfriendlylabel")
     parser.add_argument(
