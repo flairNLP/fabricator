@@ -8,7 +8,7 @@ from ai_dataset_generator.dataset_transformations.question_answering import (
     preprocess_squad_format,
     postprocess_squad_format,
 )
-from ai_dataset_generator.prompts import TextLabelPrompt
+from ai_dataset_generator.prompts import TextLabelPrompt, infer_prompt_from_dataset
 
 
 def run(arguments):
@@ -16,11 +16,12 @@ def run(arguments):
     dataset = preprocess_squad_format(load_dataset(arguments.dataset, split=arguments.split))
     fewshot_examples = dataset.select([1, 2, 3])
 
-    prompt = TextLabelPrompt(
-        input_variables=arguments.input_variables,
-        target_variable=arguments.target_variable,
-        task_description=arguments.task_description,
-    )
+    # prompt = TextLabelPrompt(
+    #     input_variables=arguments.input_variables,
+    #     target_variable=arguments.target_variable,
+    #     task_description=arguments.task_description,
+    # )
+    prompt = infer_prompt_from_dataset(dataset)
 
     raw_prompt = prompt.get_prompt_text(fewshot_examples)
     print(raw_prompt)

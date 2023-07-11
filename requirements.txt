@@ -2,3 +2,11 @@ datasets
 langchain
 farm-haystack>=1.18.0
 spacy
+
+# requirements of the evaluation part (may be moved into another repo in the future)
+torch
+loguru
+transformers[torch]
+evaluate
+pandas
+openpyxl
