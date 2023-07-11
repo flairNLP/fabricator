@@ -399,7 +399,7 @@ if __name__ == "__main__":
     parser.add_argument("--split_test", type=str, default="test")
     parser.add_argument("--input_variables", type=str, nargs="+", default=["text"])
     parser.add_argument("--num_fewshot_examples_per_class", type=int, default=2)
-    parser.add_argument("--max_prompt_calls", type=int, default=2)
+    parser.add_argument("--max_prompt_calls", type=int, default=10)
     parser.add_argument("--support_examples_per_prompt", type=int, default=1)
     parser.add_argument("--target_variable", type=str, default="label")
     parser.add_argument("--torch_device", type=str, default="mps")
