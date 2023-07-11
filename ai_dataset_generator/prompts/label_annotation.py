@@ -18,7 +18,7 @@ class TextLabelPrompt(LLMPrompt):
         task_description: str = "Given the following examples, annotate the unlabeled example using textual format.",
         **kwargs,
     ):
-        """Prompt for annotating text. Useful for tasks like quesion answering, summarization, translation,
+        """Prompt for annotating text. Useful for tasks like question answering, summarization, translation,
         instructions, etc.
 
         Args:
