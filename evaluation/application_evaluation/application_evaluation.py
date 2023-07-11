@@ -103,7 +103,7 @@ class ApplicationEvaluator:
         logger.info("tokenized datasets", self.dataset_name)
 
         # create trainer
-        training_args = TrainingArguments("trainer", use_mps_device=True)
+        training_args = TrainingArguments("trainer")
         trainer = Trainer(
             self.lm,
             training_args,
