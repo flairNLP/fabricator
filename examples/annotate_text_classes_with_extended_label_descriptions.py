@@ -4,9 +4,11 @@ from argparse import ArgumentParser
 
 from datasets import load_dataset
 from haystack.nodes import PromptNode
+
 from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator.dataset_transformations.text_classification import \
+    convert_labels_to_texts
 from ai_dataset_generator.prompts import ClassLabelPrompt
-from ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_text
 
 
 def run(arguments):
@@ -22,7 +24,7 @@ def run(arguments):
         "NUM": "Numeric",
     }
 
-    dataset, label_options = convert_label_ids_to_text(
+    dataset, label_options = convert_labels_to_texts(
         dataset,
         arguments.target_variable,
         expanded_label_mapping=expanded_label_mapping,

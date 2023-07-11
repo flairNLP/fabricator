@@ -1,4 +1,5 @@
 from typing import Dict, List, Tuple, Union
+
 from datasets import Dataset, DatasetDict, ClassLabel, Sequence
 
 
@@ -46,13 +47,13 @@ def replace_class_labels(id2label: Dict, expanded_labels: Dict) -> Dict:
     return replaced_id2label
 
 
-def convert_label_ids_to_text(
+def convert_labels_to_texts(
     dataset: Union[Dataset, DatasetDict],
     label_column: str,
     expanded_label_mapping: Dict = None,
     return_label_options: bool = True,
 ) -> Tuple[Dataset | DatasetDict, list[str]] | Dataset | DatasetDict:
-    """Converts label ids to natural language labels for any classification problem with a single label such as text
+    """Converts labels to natural language labels for any classification problem with a single label such as text
     classification.
 
     Args:

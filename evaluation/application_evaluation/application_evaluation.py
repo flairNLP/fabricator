@@ -1,6 +1,6 @@
+import argparse
 import os
 import random
-from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
 
@@ -20,6 +20,8 @@ from transformers import (
 from transformers import TrainingArguments, Trainer
 
 from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator.dataset_transformations.text_classification import \
+    convert_labels_to_texts
 from ai_dataset_generator.prompts import GenerateUnlabeledDataPrompt, ClassLabelPrompt
 
 BASEPATH = Path("evaluation/application_evaluation")
@@ -229,8 +231,13 @@ def generate_unlabeled_data(fewshot_examples, arguments):
     return generated_dataset
 
 
-def annotate_dataset(fewshot_examples, generated_unlabeled_dataset, arguments):
+def annotate_dataset(
+    fewshot_examples, generated_unlabeled_dataset, arguments, label_options=None, one_sentence_description=None
+):
     idx2label = dict(enumerate(fewshot_examples.features[arguments.target_variable].names))
+    task_description = arguments.task_description.format(
+        label_options=", ".join([f"{k}: {v}" for k, v in one_sentence_description.items()])
+    )
 
     prompt = ClassLabelPrompt(
         input_variables=arguments.input_variables,
@@ -280,7 +287,24 @@ def run(arguments):
     dataset_train, dataset_test = get_original_dataset_splits(arguments)
 
     # train and test the original dataset
-    ApplicationEvaluator(dataset_train, dataset_test, "original", arguments)
+    if arguments.traintest_on_original_dataset:
+        ApplicationEvaluator(dataset_train, dataset_test, "original", arguments)
+
+    expanded_label_mapping = {
+        "0": "negative",
+        "1": "positive",
+    }
+    one_sentence_description = {
+        "negative": "A negative movie review.",
+        "positive": "A positive movie review.",
+    }
+
+    dataset_train, label_options = convert_labels_to_texts(
+        dataset_train,
+        arguments.target_variable,
+        expanded_label_mapping=expanded_label_mapping,
+        return_label_options=True,
+    )
 
     # TODO we could also use our own generated examples as few shot examples in later
     #  iterations in the repeating process below
@@ -301,7 +325,9 @@ def run(arguments):
                     DATASETPATH / "generated_annotated_dataset_imdb_20_dev.dataset"
                 )
             except FileNotFoundError:
-                raise FileNotFoundError("please run the script with --devmode=False once to generate the dataset, then rename it match the filename above")
+                raise FileNotFoundError(
+                    "please run the script with --devmode=False once to generate the dataset, then rename it match the filename above"
+                )
         else:
             # generate a dataset and annotate it using the power of LLM
             current_generated_annotated_dataset = generate_and_annotate_dataset(fewshot_examples, arguments)
@@ -328,25 +354,22 @@ def run(arguments):
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument("--llm", type=str, default="text-davinci-003")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--llm", type=str, default="gpt-3.5-turbo")
     parser.add_argument("--lm", type=str, default="bert-base-uncased")
     parser.add_argument("--max_generation_length", type=int, default=100)
-    parser.add_argument("--task_description_generate", type=str, default="Generate similar texts.")
-    parser.add_argument(
-        "--task_description_annotate",
-        type=str,
-        default="Classify the review whether it's positive or negative: " "{label_options}.",
-    )
+    # parser.add_argument("--task_description_generate", type=str, default="Generate similar texts.")
+    # parser.add_argument(
+    #    "--task_description_annotate",
+    #    type=str,
+    #    default="Classify the review whether it's positive or negative: " "{label_options}.",
+    # )
     parser.add_argument("--dataset", type=str, default="imdb")
     parser.add_argument("--split_train", type=str, default="train")
     parser.add_argument("--split_test", type=str, default="test")
-    # parser.add_argument(
-    #    "--input_variables", type=str, nargs="+", default=["text"]
-    # )  # Column names as they occur in the dataset
     parser.add_argument(
         "--input_variables", type=str, nargs="+", default=["text"]
-    )  # Column names as they occur in the dataset
+    )
     parser.add_argument("--num_fewshot_examples", type=int, default=3)
     parser.add_argument("--max_prompt_calls", type=int, default=20)
     parser.add_argument("--support_examples_per_prompt", type=int, default=1)
@@ -354,5 +377,7 @@ if __name__ == "__main__":
     parser.add_argument("--torch_device", type=str, default="mps")
     parser.add_argument("--devmode", action="store_true", default=True)
     parser.add_argument("--max_size_generated", type=int, default=1000)
+    parser.add_argument("--traintest_on_original_dataset", action=argparse.BooleanOptionalAction, default=False)
+    # parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2humanfriendlylabel")
     args = parser.parse_args()
     run(args)
