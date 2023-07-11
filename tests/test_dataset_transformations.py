@@ -17,7 +17,7 @@ class TestTransformationsTextClassification(unittest.TestCase):
 
     def test_label_ids_to_textual_label(self):
         """Test transformation output only"""
-        dataset, label_options = convert_labels_to_texts(self.dataset, self.target_variable)
+        dataset, label_options = convert_label_ids_to_texts(self.dataset, self.target_variable)
         self.assertEqual(len(label_options), 6)
         self.assertEqual(set(label_options), set(self.dataset.features[self.target_variable].names))
         self.assertEqual(type(dataset[0][self.target_variable]), str)
@@ -26,7 +26,7 @@ class TestTransformationsTextClassification(unittest.TestCase):
 
     def test_formatting_with_textual_labels(self):
         """Test formatting with textual labels"""
-        dataset, label_options = convert_labels_to_texts(self.dataset, self.target_variable)
+        dataset, label_options = convert_label_ids_to_texts(self.dataset, self.target_variable)
         fewshot_examples = dataset.select([1, 2, 3])
         prompt = ClassLabelPrompt(
             input_variables=self.input_variable,
@@ -48,7 +48,7 @@ class TestTransformationsTextClassification(unittest.TestCase):
             "NUM": "Number",
             "LOC": "Location"
         }
-        dataset, label_options = convert_labels_to_texts(
+        dataset, label_options = convert_label_ids_to_texts(
             self.dataset,
             self.target_variable,
             expanded_label_mapping=extended_mapping
@@ -69,7 +69,7 @@ class TestTransformationsTextClassification(unittest.TestCase):
 
     def test_textual_labels_to_label_ids(self):
         """Test conversion back to label ids"""
-        dataset, label_options = convert_labels_to_texts(self.dataset, self.target_variable)
+        dataset, label_options = convert_label_ids_to_texts(self.dataset, self.target_variable)
         self.assertIn(dataset[0][self.target_variable], label_options)
         dataset = dataset.class_encode_column(self.target_variable)
         self.assertIn(dataset[0][self.target_variable], range(len(label_options)))
@@ -77,7 +77,7 @@ class TestTransformationsTextClassification(unittest.TestCase):
     def test_false_inputs_raises_error(self):
         """Test that false inputs raise errors"""
         with self.assertRaises(AttributeError):
-            dataset, label_options = convert_labels_to_texts(self.target_variable, self.dataset)
+            dataset, label_options = convert_label_ids_to_texts(self.target_variable, self.dataset)
 
 
 class TestTransformationsTokenClassification(unittest.TestCase):
