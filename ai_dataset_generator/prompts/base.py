@@ -67,13 +67,13 @@ class LLMPrompt:
             >>> raw_prompt = prompt.get_prompt_text(fewshot_examples)
             >>> print(raw_prompt)
         """
-        if label_options is not None:
-            if "{label_options}" not in task_description:
-                logger.warning(
-                    "{label_options} is not found in the task_description. If you want to limit your answers to "
-                    "these information, make sure to include {label_options}."
-                )
+        if label_options is not None and "{label_options}" not in task_description:
+            logger.warning(
+                "{label_options} is not found in the task_description. If you want to limit your answers to "
+                "these information, make sure to include {label_options}."
+            )
 
+        if label_options is not None and "{label_options}" in task_description:
             if isinstance(label_options, dict):
                 formatted_label_options = ", ".join([f"{k}: {v}" for k, v in label_options.items()])
             elif isinstance(label_options, list):
