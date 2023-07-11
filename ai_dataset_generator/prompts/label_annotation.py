@@ -1,7 +1,8 @@
 import logging
 from typing import Union, List
 
-from datasets import Dataset, QuestionAnsweringExtractive, TextClassification, TaskTemplate
+from datasets import Dataset, QuestionAnsweringExtractive, TextClassification, \
+    TaskTemplate
 
 from .base import LLMPrompt, ClassificationOptions
 
@@ -37,14 +38,15 @@ class TextLabelPrompt(LLMPrompt):
 class ClassLabelPrompt(LLMPrompt):
     """Prompt when output should be a single class label."""
 
+    # don't introduce new lines here, despite the line being too long
+    DEFAULT_TASK_DESCRIPTION = "Given the following classification examples, annotate the unlabeled example with a prediction that must correspond to exactly one of the following labels: {label_options}."
+
     def __init__(
         self,
         input_variables: Union[List[str], str],
         target_variable: str,
         label_options: ClassificationOptions,
-        task_description: str = "Given the following classification examples, annotate the unlabeled example with a "
-        "prediction that must correspond to exactly one of the following labels: "
-        "{label_options}.",
+        task_description: str = DEFAULT_TASK_DESCRIPTION,
         **kwargs,
     ):
         """Prompt for annotating tasks that have a single label. Useful for tasks like text classification, sentiment
@@ -103,27 +105,33 @@ def infer_prompt_from_task_template(task_template: TaskTemplate):
             target_variable="answer",  # assuming the dataset was preprocessed with preprocess_squad_format otherwise
             # dataset.task_templates[0]["answers_column"]
             task_description="Given a context and a question, generate an answer that occurs exactly and only once in "
-                             "the text.",
+            "the text.",
         )
     elif isinstance(task_template, TextClassification):
         return ClassLabelPrompt(
             input_variables=[task_template.text_column],
             target_variable=task_template.label_column,
-            label_options=dict(enumerate(task_template.label_schema["labels"].names))
+            label_options=dict(enumerate(task_template.label_schema["labels"].names)),
         )
     else:
-        raise ValueError(f"Automatic prompt is only supported for QuestionAnsweringExtractive and "
-                         f"TextClassification tasks but not for {type(task_template)}. You need to "
-                         f"specify the prompt manually.")
+        raise ValueError(
+            f"Automatic prompt is only supported for QuestionAnsweringExtractive and "
+            f"TextClassification tasks but not for {type(task_template)}. You need to "
+            f"specify the prompt manually."
+        )
 
 
 def infer_prompt_from_dataset(dataset: Dataset):
     """Infer TextLabelPrompt or ClassLabelPrompt with correct parameters from a dataset's metadata."""
     if not dataset.task_templates:
-        raise ValueError("Dataset must have exactly one task template but there is none. You need to specify the "
-                         "prompt manually.")
+        raise ValueError(
+            "Dataset must have exactly one task template but there is none. You need to specify the "
+            "prompt manually."
+        )
     elif len(dataset.task_templates) > 1:
-        raise ValueError(f"Automatic prompt is only supported for datasets with exactly one task template but yours "
-                         "has {len(dataset.task_templates)}. You need to specify the prompt manually.")
+        raise ValueError(
+            f"Automatic prompt is only supported for datasets with exactly one task template but yours "
+            "has {len(dataset.task_templates)}. You need to specify the prompt manually."
+        )
     else:
         return infer_prompt_from_task_template(dataset.task_templates[0])

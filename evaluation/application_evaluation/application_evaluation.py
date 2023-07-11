@@ -113,7 +113,7 @@ class ApplicationEvaluator:
         )
 
         # train LM on original dataset
-        logger.info("training LM on original dataset {}", self.dataset_name)
+        logger.info("training LM on dataset with size {}", len(self.dataset_train_tokenized))
         trainer.train()
         eval_results = trainer.evaluate(self.dataset_test_tokenized)
         self.add_evaluation_result(
@@ -234,16 +234,22 @@ def generate_unlabeled_data(fewshot_examples, arguments):
 def annotate_dataset(
     fewshot_examples, generated_unlabeled_dataset, arguments, label_options=None, one_sentence_description=None
 ):
-    idx2label = dict(enumerate(fewshot_examples.features[arguments.target_variable].names))
-    task_description = arguments.task_description.format(
-        label_options=", ".join([f"{k}: {v}" for k, v in one_sentence_description.items()])
-    )
+    # if no label options are provided, generate them adhoc from the dataset
+    if label_options is None:
+        label_options = dict(enumerate(fewshot_examples.features[arguments.target_variable].names))
+
+    task_description = arguments.task_description_annotate
+
+    # if a description for each label is described, add it to the task description
+    if one_sentence_description:
+        label_explanations = "\n".join([f"{k}: {v}" for k, v in one_sentence_description.items()])
+        task_description = task_description + "\n\nEach label is described as follows:\n" + label_explanations
 
     prompt = ClassLabelPrompt(
         input_variables=arguments.input_variables,
         target_variable=arguments.target_variable,
-        label_options=idx2label,
-        task_description=arguments.task_description_annotate,
+        label_options=label_options,
+        task_description=task_description,
     )
 
     prompt_node = PromptNode(
@@ -272,12 +278,23 @@ def get_original_dataset_splits(arguments):
     return dataset[arguments.split_train], dataset[arguments.split_test]
 
 
-def generate_and_annotate_dataset(fewshot_examples, arguments):
+def generate_and_annotate_dataset(fewshot_examples, arguments, expanded_label_mapping, one_sentence_description):
+    fewshot_examples, label_options = convert_label_ids_to_texts(
+        fewshot_examples,
+        arguments.target_variable,
+        expanded_label_mapping=expanded_label_mapping,
+        return_label_options=True,
+    )
+
     # generate unlabeled dataset using LLM
     generated_unlabeled_dataset = generate_unlabeled_data(fewshot_examples, arguments)
 
     # annotate unlabeled dataset using LLM
-    generated_annotated_dataset = annotate_dataset(fewshot_examples, generated_unlabeled_dataset, arguments)
+    generated_annotated_dataset = annotate_dataset(
+        fewshot_examples, generated_unlabeled_dataset, arguments, label_options, one_sentence_description
+    )
+
+    generated_annotated_dataset = generated_annotated_dataset.class_encode_column(arguments.target_variable)
 
     return generated_annotated_dataset
 
@@ -299,17 +316,19 @@ def run(arguments):
         "positive": "A positive movie review.",
     }
 
-    dataset_train, label_options = convert_label_ids_to_texts(
-        dataset_train,
-        arguments.target_variable,
-        expanded_label_mapping=expanded_label_mapping,
-        return_label_options=True,
-    )
-
     # TODO we could also use our own generated examples as few shot examples in later
     #  iterations in the repeating process below
-    # load the dataset split and some few shot examples
-    fewshot_examples = dataset_train.select(random.sample(range(len(dataset_train)), arguments.num_fewshot_examples))
+    # get some few shot examples
+    unique_labels = set(dataset_test[arguments.target_variable])
+    logger.debug("found {} unique labels: {}", len(unique_labels), unique_labels)
+    num_few_shot_examples = arguments.num_fewshot_examples_per_class * len(unique_labels)
+    num_few_shot_examples = min(num_few_shot_examples, len(dataset_train))
+    logger.info("using {} few shot examples", num_few_shot_examples)
+    indexed_to_select = random.sample(range(len(dataset_train)), num_few_shot_examples)
+    random.shuffle(indexed_to_select)
+    logger.debug("selecting examples with indexes {}", indexed_to_select)
+    fewshot_examples = dataset_train.select(indexed_to_select)
+    labels = fewshot_examples["label"]
 
     # 1) generate a dataset and annotate it
     # 2) extend the overall generated dataset with the generated dataset from step 1)
@@ -330,7 +349,12 @@ def run(arguments):
                 )
         else:
             # generate a dataset and annotate it using the power of LLM
-            current_generated_annotated_dataset = generate_and_annotate_dataset(fewshot_examples, arguments)
+            current_generated_annotated_dataset = generate_and_annotate_dataset(
+                fewshot_examples,
+                arguments,
+                expanded_label_mapping=expanded_label_mapping,
+                one_sentence_description=one_sentence_description,
+            )
 
         # extend the overall dataset with the newly generated one
         if generated_annotated_dataset is None:
@@ -339,6 +363,8 @@ def run(arguments):
             generated_annotated_dataset = datasets.concatenate_datasets(
                 [generated_annotated_dataset, current_generated_annotated_dataset]
             )
+        texts = generated_annotated_dataset["text"]
+        labels = generated_annotated_dataset["label"]
         logger.info("extended generated dataset to size {}", len(generated_annotated_dataset))
 
         # save the generated dataset to disk
@@ -357,27 +383,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm", type=str, default="gpt-3.5-turbo")
     parser.add_argument("--lm", type=str, default="bert-base-uncased")
-    parser.add_argument("--max_generation_length", type=int, default=100)
-    # parser.add_argument("--task_description_generate", type=str, default="Generate similar texts.")
-    # parser.add_argument(
-    #    "--task_description_annotate",
-    #    type=str,
-    #    default="Classify the review whether it's positive or negative: " "{label_options}.",
-    # )
+    parser.add_argument("--max_generation_length", type=int, default=500)
+    parser.add_argument(
+        "--task_description_generate", type=str, default=GenerateUnlabeledDataPrompt.DEFAULT_TASK_DESCRIPTION
+    )
+    parser.add_argument("--task_description_annotate", type=str, default=ClassLabelPrompt.DEFAULT_TASK_DESCRIPTION)
     parser.add_argument("--dataset", type=str, default="imdb")
     parser.add_argument("--split_train", type=str, default="train")
     parser.add_argument("--split_test", type=str, default="test")
-    parser.add_argument(
-        "--input_variables", type=str, nargs="+", default=["text"]
-    )
-    parser.add_argument("--num_fewshot_examples", type=int, default=3)
-    parser.add_argument("--max_prompt_calls", type=int, default=20)
+    parser.add_argument("--input_variables", type=str, nargs="+", default=["text"])
+    parser.add_argument("--num_fewshot_examples_per_class", type=int, default=2)
+    parser.add_argument("--max_prompt_calls", type=int, default=2)
     parser.add_argument("--support_examples_per_prompt", type=int, default=1)
     parser.add_argument("--target_variable", type=str, default="label")
     parser.add_argument("--torch_device", type=str, default="mps")
-    parser.add_argument("--devmode", action="store_true", default=True)
-    parser.add_argument("--max_size_generated", type=int, default=1000)
-    parser.add_argument("--traintest_on_original_dataset", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--devmode", action="store_true", default=False)
+    parser.add_argument("--max_size_generated", type=int, default=10)
+    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=True)
     # parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2humanfriendlylabel")
     args = parser.parse_args()
     run(args)
