@@ -1,7 +1,5 @@
 import argparse
 import os
-import sys
-print(sys.path)
 import random
 from collections import Counter
 from datetime import datetime
