@@ -402,7 +402,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_prompt_calls", type=int, default=10)
     parser.add_argument("--support_examples_per_prompt", type=int, default=1)
     parser.add_argument("--target_variable", type=str, default="label")
-    parser.add_argument("--torch_device", type=str, default="mps")
+    parser.add_argument("--torch_device", type=str, default="cuda")
     parser.add_argument("--devmode", action="store_true", default=False)
     parser.add_argument("--max_size_generated", type=int, default=20)
     parser.add_argument("--traintest_on_original_dataset", action="store_true", default=False)
