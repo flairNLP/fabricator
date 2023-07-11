@@ -70,8 +70,8 @@ class LLMPrompt:
         if label_options is not None:
             if "{label_options}" not in task_description:
                 logger.warning(
-                    "{label_options} is not found in the task_description. If you want to limit your answers to "
-                    "these information, make sure to include {label_options}."
+                    f"{label_options} is not found in the task_description. If you want to limit your answers to "
+                    f"these information, make sure to include {label_options}."
                 )
 
             if isinstance(label_options, dict):
