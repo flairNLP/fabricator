@@ -433,8 +433,6 @@ if __name__ == "__main__":
     parser.add_argument("--torch_device", type=str, default="cuda")
     parser.add_argument("--devmode", action="store_true", default=False)
     parser.add_argument("--max_size_generated", type=int, default=200)
-    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=False)
-    parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2human_friendly_label")
     parser.add_argument("--traintest_on_original_dataset", action="store_true", default=True)
     parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2human_friendly_label")
     parser.add_argument(
