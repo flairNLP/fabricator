@@ -1,3 +1,4 @@
+import argparse
 import os
 import random
 
@@ -19,7 +20,7 @@ ner_prompt = (
 def main(args):
 
     # model_name_or_path = "EleutherAI/pythia-70M-deduped"
-    dataset = load_dataset(args.dataset, split=args.split)
+    dataset = load_dataset(args.dataset_name, split=args.split)
     fewshot_examples = dataset.select(random.sample(range(len(dataset)), 3))
 
     prompt = TokenLabelPrompt(
@@ -141,5 +142,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_name", type=str, default="conll2003")
     parser.add_argument("--split", type=str, default="validation")
     parser.add_argument("--use_cached", type=bool, default=True)
+
+    args = parser.parse_args()
 
     main(args)
