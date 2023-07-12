@@ -318,8 +318,8 @@ def preprocess_arguments(arguments):
     arg_dict = vars(arguments)
 
     expanded_label_mapping = {
-        "0": "negative",
-        "1": "positive",
+        "neg": "negative",
+        "pos": "positive",
     }
     arg_dict["label2human_friendly_label"] = expanded_label_mapping
     one_sentence_description = {
@@ -433,7 +433,7 @@ if __name__ == "__main__":
     parser.add_argument("--torch_device", type=str, default="cuda")
     parser.add_argument("--devmode", action="store_true", default=False)
     parser.add_argument("--max_size_generated", type=int, default=200)
-    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=True)
+    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=False)
     parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2human_friendly_label")
     parser.add_argument(
         "--hfl2d", action="append", type=lambda kv: kv.split("="), dest="human_friendly_label2description"
