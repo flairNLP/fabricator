@@ -77,6 +77,7 @@ class ApplicationEvaluator:
         logger.info("found {} labels in dataset {}: {}", self.num_labels, self.dataset_name, unique_labels)
 
         # initialize LM and its tokenizer
+        logger.debug("using device {}", self.device)
         self.tokenizer = AutoTokenizer.from_pretrained(self.lm_name)
         self.lm = AutoModelForSequenceClassification.from_pretrained(self.lm_name, num_labels=self.num_labels).to(
             self.device
@@ -274,7 +275,7 @@ def get_original_dataset_splits(arguments):
     dataset = load_dataset(arguments.dataset)
     logger.info("loaded dataset {}", arguments.dataset)
 
-    return dataset[arguments.split_train], dataset[arguments.split_test]
+    return dataset[arguments.split_train].shuffle(), dataset[arguments.split_test].shuffle()
 
 
 def generate_and_annotate_dataset(fewshot_examples, arguments):
@@ -294,6 +295,11 @@ def generate_and_annotate_dataset(fewshot_examples, arguments):
     )
 
     generated_annotated_dataset = generated_annotated_dataset.class_encode_column(arguments.target_variable)
+
+    texts = generated_annotated_dataset["text"]
+    labels = generated_annotated_dataset["label"]
+    logger.info("current generated dataset size {}", len(generated_annotated_dataset))
+    logger.debug("label distribution: {}", Counter(labels))
 
     return generated_annotated_dataset
 
@@ -324,7 +330,7 @@ def run(arguments):
 
     # train and test the original dataset
     if arguments.traintest_on_original_dataset:
-        ApplicationEvaluator(dataset_train, dataset_test, "original", arguments)
+        ApplicationEvaluator(dataset_train, dataset_test, f"original_{len(dataset_train)}", arguments)
 
     # TODO we could also use our own generated examples as few shot examples in later
     #  iterations in the repeating process below
@@ -361,6 +367,13 @@ def run(arguments):
             # generate a dataset and annotate it using the power of LLM
             current_generated_annotated_dataset = generate_and_annotate_dataset(fewshot_examples, arguments)
 
+            # save to disk (will be overwritten each time)
+            filepath = (
+                DATASETPATH
+                / f"current_generated_annotated_dataset_{arguments.dataset}_{len(current_generated_annotated_dataset)}.xlsx"
+            )
+            current_generated_annotated_dataset.to_pandas().to_excel(filepath)
+
         # extend the overall dataset with the newly generated one
         if generated_annotated_dataset is None:
             generated_annotated_dataset = current_generated_annotated_dataset
@@ -374,15 +387,20 @@ def run(arguments):
         logger.debug("label distribution: {}", Counter(labels))
 
         # save the generated dataset to disk
-        generated_annotated_dataset.save_to_disk(
-            DATASETPATH
-            / f"generated_annotated_dataset_{arguments.dataset}_{len(generated_annotated_dataset)}.dataset",
-        )
+        filepath = DATASETPATH / f"generated_annotated_dataset_{arguments.dataset}_{len(generated_annotated_dataset)}"
+        generated_annotated_dataset.save_to_disk(filepath)
+        generated_annotated_dataset.to_pandas().to_excel(str(filepath) + ".xlsx")
 
         # train and test the generated dataset
         ApplicationEvaluator(
             generated_annotated_dataset, dataset_test, f"generated_{len(generated_annotated_dataset)}", arguments
         )
+        # train and test the original dataset of same size if requested
+        if arguments.traintest_on_original_dataset:
+            dataset_train_subset = dataset_train.select(range(len(generated_annotated_dataset)))
+            ApplicationEvaluator(
+                dataset_train_subset, dataset_test, f"original_{len(dataset_train_subset)}", arguments
+            )
 
 
 if __name__ == "__main__":
