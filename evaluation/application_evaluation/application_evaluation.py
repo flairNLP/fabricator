@@ -77,6 +77,7 @@ class ApplicationEvaluator:
         logger.info("found {} labels in dataset {}: {}", self.num_labels, self.dataset_name, unique_labels)
 
         # initialize LM and its tokenizer
+        logger.debug("using device {}", self.device)
         self.tokenizer = AutoTokenizer.from_pretrained(self.lm_name)
         self.lm = AutoModelForSequenceClassification.from_pretrained(self.lm_name, num_labels=self.num_labels).to(
             self.device
