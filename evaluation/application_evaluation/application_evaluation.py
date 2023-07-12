@@ -42,8 +42,11 @@ class ApplicationEvaluator:
       our dataset generator
     """
 
-    def __init__(self, dataset_train: datasets.Dataset, dataset_test: datasets.Dataset, run_type: str, arguments):
+    def __init__(self, dataset_train: datasets.Dataset, dataset_test: datasets.Dataset, run_name: str, arguments):
         assert len(arguments.input_variables) == 1, "currently only 1 input variable is supported"
+
+        logger.info("initializing ApplicationEvaluator for run_name={}", run_name)
+
         self.dataset_column_name_text = arguments.input_variables[0]
         self.dataset_column_name_target = arguments.target_variable
         self.lm_name = arguments.lm
@@ -57,7 +60,7 @@ class ApplicationEvaluator:
         # pathname of the xlsx file to store the results
 
         self.results_pathname = RESULTSPATH / f"{self.dataset_name}.xlsx"
-        self.run_type = run_type
+        self.run_type = run_name
 
         # create pandas dataframe or use existing one from disk
         try:
