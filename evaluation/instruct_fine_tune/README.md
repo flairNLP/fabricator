@@ -17,9 +17,7 @@ FT-LLama on evaluation  split of Conll03
 
 
 100 Samples
-
 Accuracy: 0.664
-
 Classification Report
             precision   recal    f1-score   support
 0           1.00       1.00     1.00       143
@@ -35,9 +33,11 @@ Classification Report
 mic (avg)   0.97       0.82     0.89       359
 mac (avg)   0.52       0.50     0.51       359
 
-
 1000 Samples: 
-
 Accuracy: 0.47
+
+
+Not-fine-tuned LLama on evaluation  split of Conll03
+1000 Samples -> None usable
 
 
