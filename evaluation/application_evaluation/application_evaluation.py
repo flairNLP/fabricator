@@ -115,9 +115,14 @@ class ApplicationEvaluator:
         )
 
         # train LM on original dataset
-        logger.info("training LM on dataset with size {}", len(self.dataset_train_tokenized))
+        logger.info("training LM on dataset with size {}...", len(self.dataset_train_tokenized))
         trainer.train()
+        logger.info("finished training")
+
+        # test
+        logger.info("evaluating LM on dataset with size {}...", len(self.dataset_test_tokenized))
         eval_results = trainer.evaluate(self.dataset_test_tokenized)
+        logger.info("finished evaluation")
         self.add_evaluation_result(
             self.run_type,
             len(self.dataset_train_tokenized),
@@ -402,15 +407,21 @@ def run(arguments):
         generated_annotated_dataset.to_pandas().to_excel(str(filepath) + ".xlsx")
 
         # train and test the generated dataset
+        logger.info("training and testing of generated dataset...")
         ApplicationEvaluator(
             generated_annotated_dataset, dataset_test, f"generated_{len(generated_annotated_dataset)}", arguments
         )
+        logger.info("finished training and testing of generated dataset")
         # train and test the original dataset of same size if requested
         if arguments.traintest_on_original_dataset:
+            logger.info("training and testing of original dataset of same size...")
             dataset_train_subset = dataset_train.select(range(len(generated_annotated_dataset)))
             ApplicationEvaluator(
                 dataset_train_subset, dataset_test, f"original_{len(dataset_train_subset)}", arguments
             )
+            logger.info("finished training and testing of original dataset of same size")
+
+        logger.info("finished iteration of dataset generation with current size {}", len(generated_annotated_dataset))
 
 
 if __name__ == "__main__":
