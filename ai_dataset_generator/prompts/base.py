@@ -1,10 +1,8 @@
-import logging
 from typing import List, Dict, Union, Optional
+
 from datasets import Dataset
-
 from langchain.prompts import PromptTemplate
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 ClassificationLabels = List[str]
 ID2Label = Dict[int, str]
@@ -69,8 +67,8 @@ class LLMPrompt:
         """
         if label_options is not None and "{label_options}" not in task_description:
             logger.warning(
-                "{label_options} is not found in the task_description. If you want to limit your answers to "
-                "these information, make sure to include {label_options}."
+                "{} is not found in the task_description. If you want to limit your answers to "
+                "these information, make sure to include {label_options}.", label_options
             )
 
         if label_options is not None and "{label_options}" in task_description:

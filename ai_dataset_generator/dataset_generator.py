@@ -1,20 +1,18 @@
 import json
-import logging
 import random
-
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Union, Tuple
-from collections import defaultdict
 
 from datasets import Dataset
 from haystack.nodes import PromptNode
 from haystack.nodes import PromptTemplate as HaystackPromptTemplate
+from loguru import logger
 from tqdm import tqdm
 
-from ai_dataset_generator.utils import log_dir, create_timestamp_path, infer_dummy_example
 from ai_dataset_generator.prompts.base import LLMPrompt
-
-logger = logging.getLogger(__name__)
+from ai_dataset_generator.utils import log_dir, create_timestamp_path, \
+    infer_dummy_example
 
 
 class DatasetGenerator:
@@ -217,11 +215,11 @@ class DatasetGenerator:
                     original_dataset[key].append(value)
 
             if prompt_call_idx >= max_prompt_calls:
-                logger.info(f"Reached maximum number of prompt calls ({max_prompt_calls}).")
+                logger.info("Reached maximum number of prompt calls ({}).", max_prompt_calls)
                 break
 
             if len(generated_dataset) >= num_samples_to_generate:
-                logger.info(f"Generated {num_samples_to_generate} samples.")
+                logger.info("Generated {} samples.", num_samples_to_generate)
                 break
 
         generated_dataset = Dataset.from_dict(generated_dataset)
@@ -250,7 +248,7 @@ class DatasetGenerator:
             return target_type(prediction)
         except ValueError:
             logger.warning(
-                f"Could not convert prediction {repr(prediction)} to type {target_type}. "
-                f"Returning original prediction."
+                "Could not convert prediction {} to type {target_type}. "
+                "Returning original prediction.", repr(prediction)
             )
             return prediction
