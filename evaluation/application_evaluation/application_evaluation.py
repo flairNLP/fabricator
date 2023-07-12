@@ -386,6 +386,9 @@ def run(arguments):
 
 
 if __name__ == "__main__":
+    """
+    main method
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm", type=str, default="gpt-3.5-turbo")
     parser.add_argument("--lm", type=str, default="bert-base-uncased")
@@ -413,3 +416,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args = preprocess_arguments(args)
     run(args)
+
+
