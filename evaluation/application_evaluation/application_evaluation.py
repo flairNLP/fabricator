@@ -294,6 +294,14 @@ def generate_and_annotate_dataset(fewshot_examples, arguments):
         fewshot_examples, generated_unlabeled_dataset, arguments, label_options
     )
 
+    generated_dataset = generated_annotated_dataset.filter(lambda example: example[arguments.target_variable] in label_options)
+    junk_labeled_dataset = generated_dataset.filter(lambda example: example[arguments.target_variable] not in label_options)
+    if junk_labeled_dataset:
+        logger.warning("found {} examples with junk labels", len(junk_labeled_dataset))
+        logger.warning("saving junk labeled dataset to disk.")
+        filepath = DATASETPATH / f"junk_labeled_dataset_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+        generated_annotated_dataset.save_to_disk(filepath)
+
     generated_annotated_dataset = generated_annotated_dataset.class_encode_column(arguments.target_variable)
 
     texts = generated_annotated_dataset["text"]
