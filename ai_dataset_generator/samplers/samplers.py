@@ -5,14 +5,12 @@ TODO: Implement mechanism: like num_examples == -1 -> infer labels and sample
       as long as we do not have them all)
 
 """
-import logging
 import random
 from typing import Dict, List, Set, Union
 
 from datasets import ClassLabel, Dataset, Sequence, Value
+from loguru import logger
 from tqdm import tqdm
-
-logger = logging.getLogger(__name__)
 
 
 def random_sampler(dataset: Dataset, num_examples: int) -> Dataset:
@@ -146,7 +144,7 @@ def ml_mc_sampler(dataset: Dataset, labels_column: str, num_examples: int) -> Da
 
         tries += 1
         if tries == max_tries:
-            logger.info(f"Stopping sample. Max tries(={max_tries}) exceeded.")
+            logger.info("Stopping sample. Max tries(={}) exceeded.", max_tries)
             break
 
     return dataset.select(sampled_indices)
@@ -160,7 +158,7 @@ def _infere_class_labels(dataset: Dataset, label_column: str) -> Dict[int, str]:
         raise ValueError(f"Label column {label_column} not found in dataset")
 
     if isinstance(features[label_column], Value):
-        logger.info(f"Label column {label_column} is of type Value. Inferring labels from dataset")
+        logger.info("Label column {} is of type Value. Inferring labels from dataset", label_column)
         class_labels = dataset.class_encode_column(label_column).features[label_column].names
     elif isinstance(features[label_column], ClassLabel):
         class_labels = features[label_column].names

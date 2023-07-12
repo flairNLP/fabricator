@@ -1,12 +1,9 @@
-import logging
 from typing import Union, List
 
 from datasets import Dataset, QuestionAnsweringExtractive, TextClassification, \
     TaskTemplate
 
 from .base import LLMPrompt, ClassificationOptions
-
-logger = logging.getLogger(__name__)
 
 
 class TextLabelPrompt(LLMPrompt):
