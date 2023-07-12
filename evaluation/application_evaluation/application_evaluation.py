@@ -295,6 +295,11 @@ def generate_and_annotate_dataset(fewshot_examples, arguments):
 
     generated_annotated_dataset = generated_annotated_dataset.class_encode_column(arguments.target_variable)
 
+    texts = generated_annotated_dataset["text"]
+    labels = generated_annotated_dataset["label"]
+    logger.info("current generated dataset size {}", len(generated_annotated_dataset))
+    logger.debug("label distribution: {}", Counter(labels))
+
     return generated_annotated_dataset
 
 
