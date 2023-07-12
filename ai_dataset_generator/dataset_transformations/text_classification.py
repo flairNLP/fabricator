@@ -27,23 +27,36 @@ def get_labels_from_dataset(dataset: Union[Dataset, DatasetDict], label_column: 
     return features.names
 
 
-def replace_class_labels(id2label: Dict, expanded_labels: Dict) -> Dict:
+def replace_class_labels(id2label: Union[Dict[str, str], Dict[int, str]], expanded_labels: Dict) -> Dict:
     """Replaces class labels with expanded labels, i.e. label LOC should be expanded to LOCATION.
     Values of id2label need to match keys of expanded_labels.
 
     Args:
         id2label (Dict): mapping from label ids to label names
-        expanded_labels (Dict): mapping from label names to expanded label names
+        expanded_labels (Dict): mapping from label names or label ids to expanded label names
 
     Returns:
         Dict: mapping from label ids to label names with expanded labels
     """
-    replaced_id2label = {}
-    for idx, tag in id2label.items():
-        if tag in expanded_labels:
-            replaced_id2label[idx] = expanded_labels[tag]
-        else:
-            replaced_id2label[idx] = tag
+    if all([isinstance(k, int) for k in expanded_labels.keys()]):
+        type_keys = "int"
+    elif all([isinstance(k, str) for k in expanded_labels.keys()]):
+        type_keys = "str"
+    else:
+        raise ValueError("Keys of expanded_labels must be either all ints or all strings.")
+
+    if not all([isinstance(v, str) for v in expanded_labels.values()]):
+        raise ValueError("Values of expanded_labels must be strings.")
+
+    if type_keys == "str":
+        replaced_id2label = {}
+        for idx, tag in id2label.items():
+            if tag in expanded_labels:
+                replaced_id2label[idx] = expanded_labels[tag]
+            else:
+                replaced_id2label[idx] = tag
+    else:
+        replaced_id2label = expanded_labels
     return replaced_id2label
 
 
