@@ -242,8 +242,10 @@ def annotate_dataset(fewshot_examples, generated_unlabeled_dataset, arguments, l
 
     # if a description for each label is described, add it to the task description
     if arguments.human_friendly_label2description:
-        label_explanations = "\n".join([f"{k}: {v}" for k, v in arguments.human_friendly_label2description.items()])
-        task_description = task_description + "\n\nEach label is described as follows:\n" + label_explanations
+        tmp = []
+        for label_option in label_options:
+            tmp.append(f"{label_option} ({arguments.human_friendly_label2description[label_option]})")
+        label_options = tmp
 
     prompt = ClassLabelPrompt(
         input_variables=arguments.input_variables,
@@ -431,10 +433,10 @@ if __name__ == "__main__":
     parser.add_argument("--torch_device", type=str, default="cuda")
     parser.add_argument("--devmode", action="store_true", default=False)
     parser.add_argument("--max_size_generated", type=int, default=200)
-    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=False)
-    parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2humanfriendlylabel")
+    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=True)
+    parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2human_friendly_label")
     parser.add_argument(
-        "--hfl2d", action="append", type=lambda kv: kv.split("="), dest="humanfriendlylabel2description"
+        "--hfl2d", action="append", type=lambda kv: kv.split("="), dest="human_friendly_label2description"
     )
     args = parser.parse_args()
     args = preprocess_arguments(args)
