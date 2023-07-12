@@ -304,8 +304,13 @@ def generate_and_annotate_dataset(fewshot_examples, arguments):
         fewshot_examples, generated_unlabeled_dataset, arguments, label_options
     )
 
-    generated_annotated_dataset = generated_annotated_dataset.filter(lambda example: example[arguments.target_variable] in label_options)
-    junk_labeled_dataset = generated_annotated_dataset.filter(lambda example: example[arguments.target_variable] not in label_options)
+    # filter datasets to remove unusuable junk
+    generated_annotated_dataset = generated_annotated_dataset.filter(
+        lambda example: example[arguments.target_variable] in label_options
+    )
+    junk_labeled_dataset = generated_annotated_dataset.filter(
+        lambda example: example[arguments.target_variable] not in label_options
+    )
     if junk_labeled_dataset:
         logger.warning("found {} examples with junk labels", len(junk_labeled_dataset))
         logger.warning("saving junk labeled dataset to disk.")
@@ -316,7 +321,7 @@ def generate_and_annotate_dataset(fewshot_examples, arguments):
 
     texts = generated_annotated_dataset["text"]
     labels = generated_annotated_dataset["label"]
-    logger.info("current generated dataset size {}", len(generated_annotated_dataset))
+    logger.info("generated dataset size {}", len(generated_annotated_dataset))
     logger.debug("label distribution: {}", Counter(labels))
 
     return generated_annotated_dataset
