@@ -40,6 +40,9 @@ def single_label_task_sampler(dataset: Dataset, label_column: str, num_examples:
 
     pbar = tqdm(total=num_examples, desc="Sampling")
 
+    class_labels = _infer_class_labels(dataset, label_column)
+    num_classes = len(class_labels)
+
     unique_classes_sampled = set()
     total_examples_sampled = 0
 
@@ -64,7 +67,7 @@ def single_label_task_sampler(dataset: Dataset, label_column: str, num_examples:
             pbar.update(1)
 
         # Further sample if we collected at least one example per label
-        elif len(sampled_indices) < num_examples:
+        elif len(sampled_indices) < num_examples and len(unique_classes_sampled) == num_classes:
             sampled_indices.append(idx)
             total_examples_sampled += 1
             pbar.update(1)
@@ -88,7 +91,8 @@ def ml_mc_sampler(dataset: Dataset, labels_column: str, num_examples: int) -> Da
     if "train" in dataset:
         dataset = dataset["train"]
 
-    total_labels = _infere_class_labels(dataset, labels_column)
+    total_labels = _infer_class_labels(dataset, labels_column)
+    num_classes = len(total_labels)
 
     # Because of random sampling we do not ensure, that we ever sampled all examples
     # Nor do we know if all labels are present. We therefore use a max try counter
@@ -134,7 +138,7 @@ def ml_mc_sampler(dataset: Dataset, labels_column: str, num_examples: int) -> Da
             pbar.update(1)
 
         # Further sample if we collected at least one example per label
-        elif len(sampled_indices) < num_examples:
+        elif len(sampled_indices) < num_examples and len(unique_classes_sampled) == num_classes:
             sampled_indices.append(idx)
             total_examples_sampled += 1
             pbar.update(1)
@@ -150,7 +154,7 @@ def ml_mc_sampler(dataset: Dataset, labels_column: str, num_examples: int) -> Da
     return dataset.select(sampled_indices)
 
 
-def _infere_class_labels(dataset: Dataset, label_column: str) -> Dict[int, str]:
+def _infer_class_labels(dataset: Dataset, label_column: str) -> Dict[int, str]:
     """Infer the total set of labels"""
     features = dataset.features
 
