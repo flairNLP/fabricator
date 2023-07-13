@@ -10,6 +10,7 @@ from ai_dataset_generator.prompts import ClassLabelPrompt, TokenLabelPrompt
 
 class TestTransformationsTextClassification(unittest.TestCase):
     """Testcase for ClassLabelPrompt"""
+
     def setUp(self) -> None:
         self.input_variable = "text"
         self.target_variable = "coarse_label"
@@ -46,12 +47,10 @@ class TestTransformationsTextClassification(unittest.TestCase):
             "ABBR": "Abbreviation",
             "HUM": "Human",
             "NUM": "Number",
-            "LOC": "Location"
+            "LOC": "Location",
         }
         dataset, label_options = convert_label_ids_to_texts(
-            self.dataset,
-            self.target_variable,
-            expanded_label_mapping=extended_mapping
+            self.dataset, self.target_variable, expanded_label_mapping=extended_mapping
         )
         self.assertIn("Location", label_options)
         self.assertNotIn("LOC", label_options)
@@ -82,6 +81,7 @@ class TestTransformationsTextClassification(unittest.TestCase):
 
 class TestTransformationsTokenClassification(unittest.TestCase):
     """Testcase for TokenLabelTransformations"""
+
     def setUp(self) -> None:
         self.input_variable = "tokens"
         self.target_variable = "ner_tags"
@@ -90,17 +90,24 @@ class TestTransformationsTokenClassification(unittest.TestCase):
 
     def test_bio_tokens_to_spans(self):
         """Test transformation output only (BIO to spans)"""
-        dataset, label_options = token_labels_to_spans(self.dataset, self.input_variable, self.target_variable, self.id2label)
+        dataset, label_options = token_labels_to_spans(
+            self.dataset, self.input_variable, self.target_variable, self.id2label
+        )
         self.assertEqual(len(label_options), 4)
         self.assertEqual(type(dataset[0][self.target_variable]), str)
         self.assertNotEqual(type(dataset[0][self.target_variable]), int)
-        labels = [spans.split(LABEL2ENTITY_SEPARATOR, 1)[0].strip() for spans in dataset[0][self.target_variable].split(LABEL_SEPARATOR)]
+        labels = [
+            spans.split(LABEL2ENTITY_SEPARATOR, 1)[0].strip()
+            for spans in dataset[0][self.target_variable].split(LABEL_SEPARATOR)
+        ]
         for label in labels:
             self.assertIn(label, label_options)
 
     def test_formatting_with_span_labels(self):
         """Test formatting with span labels"""
-        dataset, label_options = token_labels_to_spans(self.dataset, self.input_variable, self.target_variable, self.id2label)
+        dataset, label_options = token_labels_to_spans(
+            self.dataset, self.input_variable, self.target_variable, self.id2label
+        )
         fewshot_examples = dataset.select([1, 2, 3])
         prompt = TokenLabelPrompt(
             input_variables=self.input_variable,
@@ -115,18 +122,15 @@ class TestTransformationsTokenClassification(unittest.TestCase):
 
     def test_expanded_textual_labels(self):
         """Test formatting with expanded textual labels"""
-        extended_mapping = {
-            "PER": "person",
-            "LOC": "location",
-            "ORG": "organization",
-            "MISC": "misceallaneous"
-        }
+        extended_mapping = {"PER": "person", "LOC": "location", "ORG": "organization", "MISC": "misceallaneous"}
         id2label = replace_token_labels(self.id2label, extended_mapping)
         self.assertIn("B-location", id2label.values())
         self.assertIn("I-person", id2label.values())
         self.assertNotIn("B-LOC", id2label.values())
         self.assertNotIn("I-MISC", id2label.values())
-        dataset, label_options = token_labels_to_spans(self.dataset, self.input_variable, self.target_variable, id2label)
+        dataset, label_options = token_labels_to_spans(
+            self.dataset, self.input_variable, self.target_variable, id2label
+        )
         fewshot_examples = dataset.select([1, 2, 3])
         prompt = TokenLabelPrompt(
             input_variables=self.input_variable,
@@ -141,7 +145,9 @@ class TestTransformationsTokenClassification(unittest.TestCase):
 
     def test_textual_labels_to_label_ids(self):
         """Test conversion back to label ids on token-level"""
-        dataset, label_options = token_labels_to_spans(self.dataset, self.input_variable, self.target_variable, self.id2label)
+        dataset, label_options = token_labels_to_spans(
+            self.dataset, self.input_variable, self.target_variable, self.id2label
+        )
         self.assertEqual(dataset[0][self.target_variable], "ORG -> EU\nMISC -> German, British")
         dataset = dataset.select(range(10))
         dataset = spans_to_token_labels(dataset, self.input_variable, self.target_variable, self.id2label)
@@ -151,14 +157,22 @@ class TestTransformationsTokenClassification(unittest.TestCase):
     def test_false_inputs_raises_error(self):
         """Test that false inputs raise errors"""
         with self.assertRaises(AttributeError):
-            dataset, label_options = token_labels_to_spans(self.target_variable, self.dataset, self.input_variable, self.id2label)
+            dataset, label_options = token_labels_to_spans(
+                self.target_variable, self.dataset, self.input_variable, self.id2label
+            )
 
         with self.assertRaises(AttributeError):
-            dataset, label_options = token_labels_to_spans(self.id2label, self.target_variable, self.dataset, self.input_variable,)
+            dataset, label_options = token_labels_to_spans(
+                self.id2label,
+                self.target_variable,
+                self.dataset,
+                self.input_variable,
+            )
 
 
 class TestTransformationsQuestionAnswering(unittest.TestCase):
     """Testcase for QA Transformations"""
+
     def setUp(self) -> None:
         self.input_variable = ["context", "question"]
         self.target_variable = "answer"
@@ -170,8 +184,7 @@ class TestTransformationsQuestionAnswering(unittest.TestCase):
         dataset = preprocess_squad_format(self.dataset.select(range(30)))
         self.assertEqual(type(dataset[0]["answer"]), str)
         with self.assertRaises(KeyError):
-             x = dataset[0]["answer_start"]
-
+            x = dataset[0]["answer_start"]
 
     def test_squad_postprocessing(self):
         """Test transformation flat structure into squad format"""
