@@ -1,7 +1,5 @@
-import logging
 from datasets import Dataset
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 def preprocess_squad_format(dataset: Dataset) -> Dataset:
@@ -60,8 +58,9 @@ def calculate_answer_start(example):
     answer_start = example["context"].find(example["answer"])
     if answer_start < 0:
         logger.info(
-            f'Could not calculate the answer start because the context "{example["context"]}" '
-            f'does not contain the answer "{example["answer"]}".'
+            'Could not calculate the answer start because the context "{}" ' 'does not contain the answer "{}".',
+            example["context"],
+            example["answer"],
         )
         answer_start = -1
     else:

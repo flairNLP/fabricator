@@ -42,8 +42,11 @@ class ApplicationEvaluator:
       our dataset generator
     """
 
-    def __init__(self, dataset_train: datasets.Dataset, dataset_test: datasets.Dataset, run_type: str, arguments):
+    def __init__(self, dataset_train: datasets.Dataset, dataset_test: datasets.Dataset, run_name: str, arguments):
         assert len(arguments.input_variables) == 1, "currently only 1 input variable is supported"
+
+        logger.info("initializing ApplicationEvaluator for run_name={}", run_name)
+
         self.dataset_column_name_text = arguments.input_variables[0]
         self.dataset_column_name_target = arguments.target_variable
         self.lm_name = arguments.lm
@@ -57,7 +60,7 @@ class ApplicationEvaluator:
         # pathname of the xlsx file to store the results
 
         self.results_pathname = RESULTSPATH / f"{self.dataset_name}.xlsx"
-        self.run_type = run_type
+        self.run_type = run_name
 
         # create pandas dataframe or use existing one from disk
         try:
@@ -71,12 +74,16 @@ class ApplicationEvaluator:
         self.dataset_train = dataset_train
         self.dataset_test = dataset_test
 
+        # get dist of labels in train
+        train_label_dist = Counter(self.dataset_test[self.dataset_column_name_target])
+
         # get number of unique labels
         unique_labels = set(self.dataset_test[self.dataset_column_name_target])
         self.num_labels = len(unique_labels)
         logger.info("found {} labels in dataset {}: {}", self.num_labels, self.dataset_name, unique_labels)
 
         # initialize LM and its tokenizer
+        logger.debug("using device {}", self.device)
         self.tokenizer = AutoTokenizer.from_pretrained(self.lm_name)
         self.lm = AutoModelForSequenceClassification.from_pretrained(self.lm_name, num_labels=self.num_labels).to(
             self.device
@@ -114,14 +121,20 @@ class ApplicationEvaluator:
         )
 
         # train LM on original dataset
-        logger.info("training LM on dataset with size {}", len(self.dataset_train_tokenized))
+        logger.info("training LM on dataset with size {}...", len(self.dataset_train_tokenized))
         trainer.train()
+        logger.info("finished training")
+
+        # test
+        logger.info("evaluating LM on dataset with size {}...", len(self.dataset_test_tokenized))
         eval_results = trainer.evaluate(self.dataset_test_tokenized)
+        logger.info("finished evaluation")
         self.add_evaluation_result(
             self.run_type,
             len(self.dataset_train_tokenized),
             len(self.dataset_test_tokenized),
             eval_results,
+            train_label_dist,
         )
 
     def tokenize_dataset(self, dataset):
@@ -160,6 +173,7 @@ class ApplicationEvaluator:
         training_size: int,
         test_size: int,
         eval_results: dict,
+            train_dist: dict,
     ):
         """
         Adds an evaluation result to the df and stores the df to disk as an Excel file.
@@ -178,12 +192,13 @@ class ApplicationEvaluator:
                         {
                             "dt_utc": datetime.utcnow(),
                             "run_type": run_type,
-                            "training_size": training_size,
+                            "train_size": training_size,
                             "test_size": test_size,
                             "accuracy": eval_results["eval_accuracy"]["accuracy"],
                             "f1": eval_results["eval_f1"]["f1"],
                             "precision": eval_results["eval_precision"]["precision"],
                             "recall": eval_results["eval_recall"]["recall"],
+                            "train_dist": train_dist,
                         },
                     ]
                 ),
@@ -241,8 +256,10 @@ def annotate_dataset(fewshot_examples, generated_unlabeled_dataset, arguments, l
 
     # if a description for each label is described, add it to the task description
     if arguments.human_friendly_label2description:
-        label_explanations = "\n".join([f"{k}: {v}" for k, v in arguments.human_friendly_label2description.items()])
-        task_description = task_description + "\n\nEach label is described as follows:\n" + label_explanations
+        tmp = []
+        for label_option in label_options:
+            tmp.append(f"{label_option} ({arguments.human_friendly_label2description[label_option]})")
+        label_options = tmp
 
     prompt = ClassLabelPrompt(
         input_variables=arguments.input_variables,
@@ -274,7 +291,7 @@ def get_original_dataset_splits(arguments):
     dataset = load_dataset(arguments.dataset)
     logger.info("loaded dataset {}", arguments.dataset)
 
-    return dataset[arguments.split_train], dataset[arguments.split_test]
+    return dataset[arguments.split_train].shuffle(), dataset[arguments.split_test].shuffle()
 
 
 def generate_and_annotate_dataset(fewshot_examples, arguments):
@@ -293,7 +310,25 @@ def generate_and_annotate_dataset(fewshot_examples, arguments):
         fewshot_examples, generated_unlabeled_dataset, arguments, label_options
     )
 
+    # filter datasets to remove unusuable junk
+    generated_annotated_dataset = generated_annotated_dataset.filter(
+        lambda example: example[arguments.target_variable] in label_options
+    )
+    junk_labeled_dataset = generated_annotated_dataset.filter(
+        lambda example: example[arguments.target_variable] not in label_options
+    )
+    if junk_labeled_dataset:
+        logger.warning("found {} examples with junk labels", len(junk_labeled_dataset))
+        logger.warning("saving junk labeled dataset to disk.")
+        filepath = DATASETPATH / f"junk_labeled_dataset_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+        junk_labeled_dataset.save_to_disk(filepath)
+
     generated_annotated_dataset = generated_annotated_dataset.class_encode_column(arguments.target_variable)
+
+    texts = generated_annotated_dataset["text"]
+    labels = generated_annotated_dataset["label"]
+    logger.info("generated dataset size {}", len(generated_annotated_dataset))
+    logger.debug("label distribution: {}", Counter(labels))
 
     return generated_annotated_dataset
 
@@ -302,8 +337,8 @@ def preprocess_arguments(arguments):
     arg_dict = vars(arguments)
 
     expanded_label_mapping = {
-        "0": "negative",
-        "1": "positive",
+        "neg": "negative",
+        "pos": "positive",
     }
     arg_dict["label2human_friendly_label"] = expanded_label_mapping
     one_sentence_description = {
@@ -324,7 +359,7 @@ def run(arguments):
 
     # train and test the original dataset
     if arguments.traintest_on_original_dataset:
-        ApplicationEvaluator(dataset_train, dataset_test, "original", arguments)
+        ApplicationEvaluator(dataset_train, dataset_test, f"original_{len(dataset_train)}", arguments)
 
     # TODO we could also use our own generated examples as few shot examples in later
     #  iterations in the repeating process below
@@ -361,6 +396,13 @@ def run(arguments):
             # generate a dataset and annotate it using the power of LLM
             current_generated_annotated_dataset = generate_and_annotate_dataset(fewshot_examples, arguments)
 
+            # save to disk (will be overwritten each time)
+            filepath = (
+                DATASETPATH
+                / f"current_generated_annotated_dataset_{arguments.dataset}_{len(current_generated_annotated_dataset)}.xlsx"
+            )
+            current_generated_annotated_dataset.to_pandas().to_excel(filepath)
+
         # extend the overall dataset with the newly generated one
         if generated_annotated_dataset is None:
             generated_annotated_dataset = current_generated_annotated_dataset
@@ -374,15 +416,26 @@ def run(arguments):
         logger.debug("label distribution: {}", Counter(labels))
 
         # save the generated dataset to disk
-        generated_annotated_dataset.save_to_disk(
-            DATASETPATH
-            / f"generated_annotated_dataset_{arguments.dataset}_{len(generated_annotated_dataset)}.dataset",
-        )
+        filepath = DATASETPATH / f"generated_annotated_dataset_{arguments.dataset}_{len(generated_annotated_dataset)}"
+        generated_annotated_dataset.save_to_disk(filepath)
+        generated_annotated_dataset.to_pandas().to_excel(str(filepath) + ".xlsx")
 
         # train and test the generated dataset
+        logger.info("training and testing of generated dataset...")
         ApplicationEvaluator(
             generated_annotated_dataset, dataset_test, f"generated_{len(generated_annotated_dataset)}", arguments
         )
+        logger.info("finished training and testing of generated dataset")
+        # train and test the original dataset of same size if requested
+        if arguments.traintest_on_original_dataset:
+            logger.info("training and testing of original dataset of same size...")
+            dataset_train_subset = dataset_train.select(range(len(generated_annotated_dataset)))
+            ApplicationEvaluator(
+                dataset_train_subset, dataset_test, f"original_{len(dataset_train_subset)}", arguments
+            )
+            logger.info("finished training and testing of original dataset of same size")
+
+        logger.info("finished iteration of dataset generation with current size {}", len(generated_annotated_dataset))
 
 
 if __name__ == "__main__":
@@ -399,16 +452,16 @@ if __name__ == "__main__":
     parser.add_argument("--split_test", type=str, default="test")
     parser.add_argument("--input_variables", type=str, nargs="+", default=["text"])
     parser.add_argument("--num_fewshot_examples_per_class", type=int, default=2)
-    parser.add_argument("--max_prompt_calls", type=int, default=10)
+    parser.add_argument("--max_prompt_calls", type=int, default=50)
     parser.add_argument("--support_examples_per_prompt", type=int, default=1)
     parser.add_argument("--target_variable", type=str, default="label")
     parser.add_argument("--torch_device", type=str, default="cuda")
     parser.add_argument("--devmode", action="store_true", default=False)
     parser.add_argument("--max_size_generated", type=int, default=200)
-    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=False)
-    parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2humanfriendlylabel")
+    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=True)
+    parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2human_friendly_label")
     parser.add_argument(
-        "--hfl2d", action="append", type=lambda kv: kv.split("="), dest="humanfriendlylabel2description"
+        "--hfl2d", action="append", type=lambda kv: kv.split("="), dest="human_friendly_label2description"
     )
     args = parser.parse_args()
     args = preprocess_arguments(args)
