@@ -74,6 +74,9 @@ class ApplicationEvaluator:
         self.dataset_train = dataset_train
         self.dataset_test = dataset_test
 
+        # get dist of labels in train
+        train_label_dist = Counter(self.dataset_test[self.dataset_column_name_target])
+
         # get number of unique labels
         unique_labels = set(self.dataset_test[self.dataset_column_name_target])
         self.num_labels = len(unique_labels)
@@ -131,6 +134,7 @@ class ApplicationEvaluator:
             len(self.dataset_train_tokenized),
             len(self.dataset_test_tokenized),
             eval_results,
+            train_label_dist,
         )
 
     def tokenize_dataset(self, dataset):
@@ -169,6 +173,7 @@ class ApplicationEvaluator:
         training_size: int,
         test_size: int,
         eval_results: dict,
+            train_dist: dict,
     ):
         """
         Adds an evaluation result to the df and stores the df to disk as an Excel file.
@@ -187,12 +192,13 @@ class ApplicationEvaluator:
                         {
                             "dt_utc": datetime.utcnow(),
                             "run_type": run_type,
-                            "training_size": training_size,
+                            "train_size": training_size,
                             "test_size": test_size,
                             "accuracy": eval_results["eval_accuracy"]["accuracy"],
                             "f1": eval_results["eval_f1"]["f1"],
                             "precision": eval_results["eval_precision"]["precision"],
                             "recall": eval_results["eval_recall"]["recall"],
+                            "train_dist": train_dist,
                         },
                     ]
                 ),
