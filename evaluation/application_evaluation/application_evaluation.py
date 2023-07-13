@@ -1,6 +1,5 @@
 import argparse
 import os
-import random
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +23,7 @@ from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.dataset_transformations.text_classification import \
     convert_label_ids_to_texts
 from ai_dataset_generator.prompts import GenerateUnlabeledDataPrompt, ClassLabelPrompt
+from ai_dataset_generator.samplers import single_label_task_sampler
 
 BASEPATH = Path("evaluation/application_evaluation")
 RESULTSPATH = BASEPATH / "results"
@@ -173,7 +173,7 @@ class ApplicationEvaluator:
         training_size: int,
         test_size: int,
         eval_results: dict,
-            train_dist: dict,
+        train_dist: dict,
     ):
         """
         Adds an evaluation result to the df and stores the df to disk as an Excel file.
@@ -369,11 +369,13 @@ def run(arguments):
     num_few_shot_examples = arguments.num_fewshot_examples_per_class * len(unique_labels)
     num_few_shot_examples = min(num_few_shot_examples, len(dataset_train))
     logger.info("using {} few shot examples", num_few_shot_examples)
-    indexed_to_select = random.sample(range(len(dataset_train)), num_few_shot_examples)
-    random.shuffle(indexed_to_select)
-    logger.debug("selecting examples with indexes {}", indexed_to_select)
-    fewshot_examples = dataset_train.select(indexed_to_select)
+    fewshot_examples = single_label_task_sampler(dataset_train, arguments.target_variable, num_few_shot_examples)
+    # indexed_to_select = random.sample(range(len(dataset_train)), num_few_shot_examples)
+    # random.shuffle(indexed_to_select)
+    # logger.debug("selecting examples with indexes {}", indexed_to_select)
+    # fewshot_examples = dataset_train.select(indexed_to_select)
     labels = fewshot_examples["label"]
+    logger.info("few shot examples label distribution: {}", Counter(labels))
 
     # 1) generate a dataset and annotate it
     # 2) extend the overall generated dataset with the generated dataset from step 1)
@@ -458,7 +460,7 @@ if __name__ == "__main__":
     parser.add_argument("--torch_device", type=str, default="cuda")
     parser.add_argument("--devmode", action="store_true", default=False)
     parser.add_argument("--max_size_generated", type=int, default=200)
-    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=True)
+    parser.add_argument("--traintest_on_original_dataset", action="store_true", default=False)
     parser.add_argument("--l2hfl", action="append", type=lambda kv: kv.split("="), dest="label2human_friendly_label")
     parser.add_argument(
         "--hfl2d", action="append", type=lambda kv: kv.split("="), dest="human_friendly_label2description"
