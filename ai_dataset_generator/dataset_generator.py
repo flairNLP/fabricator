@@ -1,6 +1,7 @@
 import json
 import logging
 import random
+import time
 
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Union, Tuple
@@ -58,6 +59,7 @@ class DatasetGenerator:
         max_prompt_calls: int = 10,
         return_original_dataset: bool = False,
         dry_run: bool = False,
+        timeout_per_prompt: Optional[int] = None,
     ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
         """Generate a dataset based on a prompt template and support examples.
         Optionally, unlabeled examples can be provided to annotate unlabeled data.
@@ -70,6 +72,8 @@ class DatasetGenerator:
             num_samples_to_generate (int, optional): Number of samples to generate. Defaults to 10.
             max_prompt_calls (int, optional): Maximum number of prompt calls. Defaults to 10.
             return_original_dataset (bool, optional): Whether to return the original dataset. Defaults to False.
+            dry_run (bool, optional): Whether to actually generate the examples or just return dummy examples.
+            timeout_per_prompt (Optional[int], optional): Timeout per prompt call. Defaults to None.
 
         Returns:
             Union[Dataset, Tuple[Dataset, Dataset]]: Generated dataset or tuple of generated dataset and original
@@ -104,6 +108,7 @@ class DatasetGenerator:
             num_samples_to_generate,
             return_original_dataset,
             dry_run,
+            timeout_per_prompt
         )
 
         if return_original_dataset:
@@ -147,6 +152,7 @@ class DatasetGenerator:
         num_samples_to_generate: int,
         return_original_dataset: bool,
         dry_run: bool,
+        timeout_per_prompt: Optional[int],
     ):
         current_tries_left = self._max_tries
         current_log_file = self._setup_log(prompt_template)
@@ -223,6 +229,9 @@ class DatasetGenerator:
             if len(generated_dataset) >= num_samples_to_generate:
                 logger.info(f"Generated {num_samples_to_generate} samples.")
                 break
+
+            if timeout_per_prompt is not None:
+                time.sleep(timeout_per_prompt)
 
         generated_dataset = Dataset.from_dict(generated_dataset)
 
