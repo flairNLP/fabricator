@@ -75,7 +75,7 @@ class ApplicationEvaluator:
         self.dataset_test = dataset_test
 
         # get dist of labels in train
-        train_label_dist = Counter(self.dataset_test[self.dataset_column_name_target])
+        train_label_dist = Counter(self.dataset_train[self.dataset_column_name_target])
 
         # get number of unique labels
         unique_labels = set(self.dataset_test[self.dataset_column_name_target])
