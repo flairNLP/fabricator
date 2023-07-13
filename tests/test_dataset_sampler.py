@@ -22,8 +22,8 @@ class TestDatasetSamplerMethodsSingleLabel(unittest.TestCase):
 
     def test_single_label_task_sampler(self):
         """Test single label task sampler. We use imdb which has two labels: positive and negative"""
-        single_label_sample = single_label_task_sampler(self.dataset, label_column="label", num_examples=10)
-        self.assertEqual(len(single_label_sample), 10)
+        single_label_sample = single_label_task_sampler(self.dataset, label_column="label", num_examples=2)
+        self.assertEqual(len(single_label_sample), 2)
         labels = list(single_label_sample["label"])
         self.assertEqual(len(set(labels)), 2)
 
