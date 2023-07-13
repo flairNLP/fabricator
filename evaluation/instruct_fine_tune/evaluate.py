@@ -11,6 +11,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 
 from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.prompts import TokenLabelPrompt
+from ai_dataset_generator.samplers import random_sampler
 
 
 ner_prompt = (
@@ -33,37 +34,47 @@ def main(args):
     raw_prompt = prompt.get_prompt_text(dataset)
     # print(raw_prompt)
 
-    unlabeled_data = dataset
+    unlabeled_data = random_sampler(dataset, 30)
 
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.model_name_or_path, eos_token="</s>", bos_token="<s>", unk_token="<unk>"
-    )
 
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model_name_or_path,
-        trust_remote_code=True
-    )
 
-    prompt_node = PromptNode(
-        args.model_name_or_path,
-        model_kwargs={"tokenizer": tokenizer, "task_name": "text-generation", "device": "cuda"}
-    )
+    # tokenizer = AutoTokenizer.from_pretrained(
+    #     args.model_name_or_path, eos_token="</s>", bos_token="<s>", unk_token="<unk>"
+    # )
+
+    # model = AutoModelForCausalLM.from_pretrained(
+    #     args.model_name_or_path,
+    #     trust_remote_code=True
+    # )
+
+    # prompt_node = PromptNode(
+    #     args.model_name_or_path,
+    #     model_kwargs={"tokenizer": tokenizer, "task_name": "text-generation", "device": "cuda"}
+    # )
 
     if not args.use_cached:
 
+        # prompt_node = PromptNode(
+        #     model_name_or_path="text-davinci-003",
+        #     api_key=os.environ.get("OPENAI_API_KEY"),
+        #     max_length=100
+        # )
+
+        # "tiiuae/falcon-7b-instruct"
         prompt_node = PromptNode(
-            model_name_or_path="text-davinci-003",
-            api_key=os.environ.get("OPENAI_API_KEY"),
-            max_length=100
+            model_name_or_path="tiiuae/falcon-7b-instruct",
+            api_key=os.environ.get("HF_API_KEY")
         )
+
 
         generator = DatasetGenerator(prompt_node)
         generated_dataset = generator.generate(
             support_examples=fewshot_examples,
             unlabeled_examples=unlabeled_data,
             prompt_template=prompt,
-            max_prompt_calls=3,
-            support_examples_per_prompt=3,
+            max_prompt_calls=30,
+            support_examples_per_prompt=0,
+            timeout_per_prompt=5,
         )
 
         generated_dataset.save_to_disk("generated_dataset")
@@ -141,7 +152,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_name_or_path", type=str, default="EleutherAI/pythia-70M-deduped")
     parser.add_argument("--dataset_name", type=str, default="conll2003")
     parser.add_argument("--split", type=str, default="validation")
-    parser.add_argument("--use_cached", type=bool, default=True)
+    parser.add_argument("--use_cached", type=bool, default=False)
 
     args = parser.parse_args()
 
