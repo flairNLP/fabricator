@@ -45,18 +45,18 @@ def main(args):
 
     if not args.use_cached:
 
-        prompt_node = PromptNode(
-            model_name_or_path="text-davinci-003",
-            api_key=os.environ.get("OPENAI_API_KEY"),
-            max_length=100
-        )
+        # prompt_node = PromptNode(
+        #     model_name_or_path="text-davinci-003",
+        #     api_key=os.environ.get("OPENAI_API_KEY"),
+        #     max_length=100
+        # )
 
         # "tiiuae/falcon-7b-instruct"
         # timdettmers/guanaco-33b-merged
-        # prompt_node = PromptNode(
-        #     model_name_or_path="timdettmers/guanaco-33b-merged",
-        #     api_key=os.environ.get("HF_API_KEY"),
-        # )
+        prompt_node = PromptNode(
+            model_name_or_path="HuggingFaceH4/starchat-beta",
+            api_key=os.environ.get("HF_API_KEY"),
+        )
 
 
         generator = DatasetGenerator(prompt_node)
@@ -69,7 +69,7 @@ def main(args):
             timeout_per_prompt=2,
         )
 
-        generated_dataset.save_to_disk("generated_dataset_chat_gpt")
+        generated_dataset.save_to_disk("generated_dataset_starchat")
 
     else:
         generated_dataset = load_from_disk("generated_dataset")
