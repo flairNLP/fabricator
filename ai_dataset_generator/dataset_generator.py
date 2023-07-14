@@ -134,10 +134,15 @@ class DatasetGenerator:
 
         # Haystack internally uses timeouts and retries, so we dont have to do it
         # We dont catch authentification errors here, because we want to fail fast
-        prediction = self.prompt_node.run(
-            prompt_template=HaystackPromptTemplate(prompt=prompt_text),
-            invocation_context=invocation_context,
-        )[0]["results"]
+
+        try:
+            prediction = self.prompt_node.run(
+                prompt_template=HaystackPromptTemplate(prompt=prompt_text),
+                invocation_context=invocation_context,
+            )[0]["results"]
+        except Exception as error:
+            logger.error(f"Error while generating example: {error}")
+            return None
 
         return prediction
 
@@ -153,6 +158,7 @@ class DatasetGenerator:
         dry_run: bool,
         timeout_per_prompt: Optional[int],
     ):
+
         current_tries_left = self._max_tries
         current_log_file = self._setup_log(prompt_template)
 
@@ -166,6 +172,10 @@ class DatasetGenerator:
             sampled_support_examples = support_examples.select(sampled_support_indices)
 
             prompt_text = prompt_template.get_prompt_text(sampled_support_examples)
+
+            if prompt_call_idx == 1:
+                logger.info(f"Prompt text: {prompt_text}")
+
             invocation_context = prompt_template.filter_example_by_columns(
                 input_example, prompt_template.input_variables
             )
@@ -174,13 +184,14 @@ class DatasetGenerator:
 
             if prediction is None:
                 current_tries_left -= 1
-                logger.warning(f"Could not generate example for prompt {prompt_text}.")
+                logger.warning(f"Could not generate example for prompt {prompt_text}")
                 if current_tries_left == 0:
                     logger.warning(
                         f"Max tries ({self._max_tries}) exceeded. Returning generated dataset with"
-                        " {len(generated_dataset)} examples."
+                        f" {len(generated_dataset)} examples."
                     )
                     break
+                continue
 
             if len(prediction) == 1:
                 prediction = prediction[0]

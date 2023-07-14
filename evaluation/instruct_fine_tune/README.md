@@ -13,31 +13,14 @@ Evaluate the "downstream" capabilities through instructions.
 
 ## Results
 
-FT-LLama on evaluation  split of Conll03
+FT-LLama on evaluation split of Conll03
 
-
-100 Samples
-Accuracy: 0.664
-Classification Report
-            precision   recal    f1-score   support
-0           1.00       1.00     1.00       143
-1           1.00       0.90     0.95       31
-2           0.00       0.00     0.00       24
-3           0.91       0.91     0.91       46
-4           0.00       0.00     0.00       7
-5           0.99       0.89     0.93       80
-6           0.00       0.00     0.00       10
-7           0.77       0.77     0.77       13
-8           0.00       0.00     0.00       5
-                                           
-mic (avg)   0.97       0.82     0.89       359
-mac (avg)   0.52       0.50     0.51       359
-
-1000 Samples: 
-Accuracy: 0.47
-
-
-Not-fine-tuned LLama on evaluation  split of Conll03
-1000 Samples -> None usable
-
-
+| Model | Prompt Type | Generated | Sampled | Accuracy | f1-score | 
+| --- | --- | --- | --- | --- | --- |
+| FT-LLama | non-verbal | 100  | 100 | 0.664 | 0.89 |
+| FT-LLama | non-verbal | 1000 | 1000 | 0.47 | - |
+| LLama | non-verbal | 10000 | - | - | - |
+| falcon-7B-instruct | non-verbal | 30 | - | - | - |
+| falcon-7B-instruct | verbal | 30 | - | 0.13 | 0.18 |
+| guanaco-33b-merged | verbal | 20 | 10 | 0.0 | 0.01 |
+| chatGPT | verbal | 30 | 30 | 0.31 | 0.72|

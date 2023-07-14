@@ -10,7 +10,7 @@ from sklearn.metrics import classification_report, accuracy_score
 from sklearn.preprocessing import MultiLabelBinarizer
 
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import TokenLabelPrompt
+from ai_dataset_generator.prompts import TokenLabelPrompt, infer_prompt_from_dataset
 from ai_dataset_generator.samplers import random_sampler
 
 
@@ -24,23 +24,14 @@ def main(args):
     dataset = load_dataset(args.dataset_name, split=args.split)
     fewshot_examples = dataset.select(random.sample(range(len(dataset)), 3))
 
+
     prompt = TokenLabelPrompt(
         input_variables=["tokens"],
         target_variable="ner_tags",
         label_options={0: "O", 1: "B-PER", 2: "I-PER", 3: "B-ORG", 4: "I-ORG", 5: "B-LOC", 6: "I-LOC"},
-        task_description=ner_prompt
     )
 
-    raw_prompt = prompt.get_prompt_text(dataset)
-    # print(raw_prompt)
-
     unlabeled_data = random_sampler(dataset, 30)
-
-
-
-    # tokenizer = AutoTokenizer.from_pretrained(
-    #     args.model_name_or_path, eos_token="</s>", bos_token="<s>", unk_token="<unk>"
-    # )
 
     # model = AutoModelForCausalLM.from_pretrained(
     #     args.model_name_or_path,
@@ -54,17 +45,18 @@ def main(args):
 
     if not args.use_cached:
 
-        # prompt_node = PromptNode(
-        #     model_name_or_path="text-davinci-003",
-        #     api_key=os.environ.get("OPENAI_API_KEY"),
-        #     max_length=100
-        # )
+        prompt_node = PromptNode(
+            model_name_or_path="text-davinci-003",
+            api_key=os.environ.get("OPENAI_API_KEY"),
+            max_length=100
+        )
 
         # "tiiuae/falcon-7b-instruct"
-        prompt_node = PromptNode(
-            model_name_or_path="tiiuae/falcon-7b-instruct",
-            api_key=os.environ.get("HF_API_KEY")
-        )
+        # timdettmers/guanaco-33b-merged
+        # prompt_node = PromptNode(
+        #     model_name_or_path="timdettmers/guanaco-33b-merged",
+        #     api_key=os.environ.get("HF_API_KEY"),
+        # )
 
 
         generator = DatasetGenerator(prompt_node)
@@ -73,11 +65,11 @@ def main(args):
             unlabeled_examples=unlabeled_data,
             prompt_template=prompt,
             max_prompt_calls=30,
-            support_examples_per_prompt=0,
-            timeout_per_prompt=5,
+            support_examples_per_prompt=3,
+            timeout_per_prompt=2,
         )
 
-        generated_dataset.save_to_disk("generated_dataset")
+        generated_dataset.save_to_disk("generated_dataset_chat_gpt")
 
     else:
         generated_dataset = load_from_disk("generated_dataset")
@@ -141,6 +133,7 @@ def calculate_metrics(golds, predictions):
 
 def evaluate(dataset, generated_dataset):
     generated_dataset = post_process(generated_dataset)
+    print(f"Using {generated_dataset} of samples from the generated dataset")
     golds, predictions = build_gold_and_prediction_pairs(dataset, generated_dataset)
     calculate_metrics(golds, predictions)
 
