@@ -210,6 +210,21 @@ class ApplicationEvaluator:
         logger.info("saved {} results to {}", len(self.df), self.results_pathname.resolve())
 
 
+def add_placeholder_labels(fewshot_examples, generated_dataset, arguments):
+    # add the empty target column with proper column type
+    original_dtype = fewshot_examples.features[arguments.target_variable].dtype
+    if original_dtype in ("float32", "float64"):
+        placeholder_value = -100000.0
+    elif original_dtype in ("int32", "int64"):
+        placeholder_value = -100000
+    elif original_dtype == "string":
+        placeholder_value = "-100000"
+    else:
+        raise ValueError("unsupported dtype {} - please define a placeholder value", original_dtype)
+    new_column = [placeholder_value] * len(generated_dataset)
+    return generated_dataset.add_column(arguments.target_variable, new_column)
+
+
 def generate_unlabeled_data(fewshot_examples, arguments):
     prompt = GenerateUnlabeledDataPrompt(
         input_variables=arguments.input_variables,
@@ -229,18 +244,7 @@ def generate_unlabeled_data(fewshot_examples, arguments):
         support_examples_per_prompt=arguments.support_examples_per_prompt,
     )
 
-    # add the empty target column with proper column type
-    original_dtype = fewshot_examples.features[arguments.target_variable].dtype
-    if original_dtype in ("float32", "float64"):
-        placeholder_value = -100000.0
-    elif original_dtype in ("int32", "int64"):
-        placeholder_value = -100000
-    elif original_dtype == "string":
-        placeholder_value = "-100000"
-    else:
-        raise ValueError("unsupported dtype {} - please define a placeholder value", original_dtype)
-    new_column = [placeholder_value] * len(generated_dataset)
-    generated_dataset = generated_dataset.add_column(arguments.target_variable, new_column)
+    generated_dataset = add_placeholder_labels(fewshot_examples, generated_dataset, arguments)
 
     logger.info("generated dataset {}", generated_dataset)
 
@@ -294,7 +298,7 @@ def get_original_dataset_splits(arguments):
     return dataset[arguments.split_train].shuffle(), dataset[arguments.split_test].shuffle()
 
 
-def generate_and_annotate_dataset(fewshot_examples, arguments):
+def generate_and_annotate_dataset(fewshot_examples, arguments, generated_unlabeled_dataset=None):
     fewshot_examples, label_options = convert_label_ids_to_texts(
         fewshot_examples,
         arguments.target_variable,
@@ -302,8 +306,16 @@ def generate_and_annotate_dataset(fewshot_examples, arguments):
         return_label_options=True,
     )
 
-    # generate unlabeled dataset using LLM
-    generated_unlabeled_dataset = generate_unlabeled_data(fewshot_examples, arguments)
+    if generated_unlabeled_dataset is None:
+        # generate unlabeled dataset using LLM
+        generated_unlabeled_dataset = generate_unlabeled_data(fewshot_examples, arguments)
+    else:
+        generated_unlabeled_dataset, label_options = convert_label_ids_to_texts(
+            generated_unlabeled_dataset,
+            arguments.target_variable,
+            expanded_label_mapping=arguments.label2human_friendly_label,
+            return_label_options=True,
+        )
 
     # annotate unlabeled dataset using LLM
     generated_annotated_dataset = annotate_dataset(
