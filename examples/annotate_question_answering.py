@@ -8,7 +8,7 @@ from ai_dataset_generator.dataset_transformations.question_answering import (
     preprocess_squad_format,
     postprocess_squad_format,
 )
-from ai_dataset_generator.prompts import TextLabelPrompt, infer_prompt_from_dataset
+from ai_dataset_generator.prompts import infer_prompt_from_dataset
 
 
 def run(arguments):
@@ -16,11 +16,6 @@ def run(arguments):
     dataset = preprocess_squad_format(load_dataset(arguments.dataset, split=arguments.split))
     fewshot_examples = dataset.select([1, 2, 3])
 
-    # prompt = TextLabelPrompt(
-    #     input_variables=arguments.input_variables,
-    #     target_variable=arguments.target_variable,
-    #     task_description=arguments.task_description,
-    # )
     prompt = infer_prompt_from_dataset(dataset)
 
     raw_prompt = prompt.get_prompt_text(fewshot_examples)
@@ -59,8 +54,8 @@ if __name__ == "__main__":
     )
     parser.add_argument("--dataset", type=str, default="squad_v2")
     parser.add_argument("--split", type=str, default="train")
-    parser.add_argument("--input_variables", type=str, nargs="+", default=["context", "question"])
-    parser.add_argument("--target_variable", type=str, default="answer")
+    parser.add_argument("--input_columns", type=str, nargs="+", default=["context", "question"])
+    parser.add_argument("--label_column", type=str, default="answer")
     parser.add_argument("--output_format", type=str, default="text")
     parser.add_argument("--max_prompt_calls", type=int, default=3)
     parser.add_argument("--support_examples_per_prompt", type=int, default=1)

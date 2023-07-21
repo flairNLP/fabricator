@@ -38,14 +38,14 @@ def replace_class_labels(id2label: Union[Dict[str, str], Dict[int, str]], expand
     Returns:
         Dict: mapping from label ids to label names with expanded labels
     """
-    if all([isinstance(k, int) for k in expanded_labels.keys()]):
+    if all(isinstance(k, int) for k in expanded_labels.keys()):
         type_keys = "int"
-    elif all([isinstance(k, str) for k in expanded_labels.keys()]):
+    elif all(isinstance(k, str) for k in expanded_labels.keys()):
         type_keys = "str"
     else:
         raise ValueError("Keys of expanded_labels must be either all ints or all strings.")
 
-    if not all([isinstance(v, str) for v in expanded_labels.values()]):
+    if not all(isinstance(v, str) for v in expanded_labels.values()):
         raise ValueError("Values of expanded_labels must be strings.")
 
     if type_keys == "str":

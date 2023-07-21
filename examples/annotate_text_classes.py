@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from datasets import load_dataset
 from haystack.nodes import PromptNode
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import ClassLabelPrompt, infer_prompt_from_dataset
+from ai_dataset_generator.prompts import infer_prompt_from_dataset
 
 
 def run(arguments):
@@ -13,14 +13,6 @@ def run(arguments):
     dataset = load_dataset(arguments.dataset, split=arguments.split)
     fewshot_examples = dataset.select(random.sample(range(len(dataset)), arguments.num_fewshot_examples))
 
-    # idx2label = dict(enumerate(fewshot_examples.features[arguments.target_variable].names))
-    #
-    # prompt = ClassLabelPrompt(
-    #     input_variables=arguments.input_variables,
-    #     target_variable=arguments.target_variable,
-    #     label_options=idx2label,
-    #     task_description=arguments.task_description,
-    # )
     prompt = infer_prompt_from_dataset(dataset)
 
     raw_prompt = prompt.get_prompt_text(fewshot_examples)
@@ -58,9 +50,9 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, default="imdb")
     parser.add_argument("--split", type=str, default="train")
     parser.add_argument(
-        "--input_variables", type=str, nargs="+", default=["text"]
+        "--input_columns", type=str, nargs="+", default=["text"]
     )  # Column names as they occur in the dataset
-    parser.add_argument("--target_variable", type=str, default="label")
+    parser.add_argument("--label_column", type=str, default="label")
     parser.add_argument(
         "--output_format", type=str, default="single_label_classification"
     )  # indicates the output format of the LLM is text
