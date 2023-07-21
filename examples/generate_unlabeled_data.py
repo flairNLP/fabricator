@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from datasets import load_dataset
 from haystack.nodes import PromptNode
 from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import GenerateUnlabeledDataPrompt
+from ai_dataset_generator.prompts import BasePrompt
 
 
 def run(arguments):
@@ -13,9 +13,9 @@ def run(arguments):
     dataset = load_dataset(arguments.dataset, split=arguments.split)
     fewshot_examples = dataset.select(random.sample(range(len(dataset)), arguments.num_fewshot_examples))
 
-    prompt = GenerateUnlabeledDataPrompt(
-        input_variables=arguments.input_variables,
+    prompt = BasePrompt(
         task_description=arguments.task_description,
+        generate_data_for_column=arguments.input_columns,
     )
     raw_prompt = prompt.get_prompt_text(fewshot_examples)
     print(raw_prompt)
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, default="imdb")
     parser.add_argument("--split", type=str, default="train")
     parser.add_argument(
-        "--input_variables", type=str, nargs="+", default=["text"]
+        "--input_columns", type=str, nargs="+", default=["text"]
     )  # Column names as they occur in the dataset
     parser.add_argument("--output_format", type=str, default="text")  # indicates the output format of the LLM is text
     parser.add_argument("--num_fewshot_examples", type=int, default=3)

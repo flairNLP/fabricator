@@ -8,7 +8,7 @@ from haystack.nodes import PromptNode
 from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.dataset_transformations.text_classification import \
     convert_label_ids_to_texts
-from ai_dataset_generator.prompts import ClassLabelPrompt
+from ai_dataset_generator.prompts import BasePrompt
 
 
 def run(arguments):
@@ -26,17 +26,17 @@ def run(arguments):
 
     dataset, label_options = convert_label_ids_to_texts(
         dataset,
-        arguments.target_variable,
+        arguments.label_column,
         expanded_label_mapping=expanded_label_mapping,
         return_label_options=True,
     )
 
     fewshot_examples = dataset.select(random.sample(range(len(dataset)), arguments.num_fewshot_examples))
-    prompt = ClassLabelPrompt(
-        input_variables=arguments.input_variables,
-        target_variable=arguments.target_variable,
-        label_options=label_options,
+    prompt = BasePrompt(
         task_description=arguments.task_description,
+        generate_data_for_column=arguments.label_column,
+        fewshot_example_columns=arguments.input_columns,
+        label_options=label_options,
     )
 
     raw_prompt = prompt.get_prompt_text(fewshot_examples)
@@ -57,7 +57,7 @@ def run(arguments):
         support_examples_per_prompt=arguments.support_examples_per_prompt,  # number of support examples per prompt
     )
 
-    generated_dataset = generated_dataset.class_encode_column(arguments.target_variable)
+    generated_dataset = generated_dataset.class_encode_column(arguments.label_column)
 
     if arguments.push_to_hub:
         generated_dataset.push_to_hub("your-first-generated-dataset")
@@ -75,9 +75,9 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, default="trec")
     parser.add_argument("--split", type=str, default="train")
     parser.add_argument(
-        "--input_variables", type=str, nargs="+", default=["text"]
+        "--input_columns", type=str, nargs="+", default=["text"]
     )  # Column names as they occur in the dataset
-    parser.add_argument("--target_variable", type=str, default="coarse_label")
+    parser.add_argument("--label_column", type=str, default="coarse_label")
     parser.add_argument(
         "--output_format", type=str, default="single_label_classification"
     )  # indicates the output format of the LLM is text

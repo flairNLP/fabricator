@@ -12,9 +12,8 @@ from haystack.nodes import PromptTemplate as HaystackPromptTemplate
 from loguru import logger
 from tqdm import tqdm
 
-from ai_dataset_generator.prompts.base import LLMPrompt
-from ai_dataset_generator.utils import log_dir, create_timestamp_path, \
-    infer_dummy_example
+from ai_dataset_generator.prompts.base import BasePrompt
+from ai_dataset_generator.utils import log_dir, create_timestamp_path
 
 
 class DatasetGenerator:
@@ -31,12 +30,12 @@ class DatasetGenerator:
         self._base_log_dir = log_dir()
         self._max_tries = max_tries
 
-    def _setup_log(self, prompt_template: LLMPrompt) -> Path:
+    def _setup_log(self, prompt_template: BasePrompt) -> Path:
         """For every generation run create a new log file.
         Current format: <timestamp>_<prompt_template_name>.jsonl
 
         Args:
-            prompt_template (LLMPrompt): Prompt template to generate the dataset with.
+            prompt_template (BasePrompt): Prompt template to generate the dataset with.
 
         Returns:
             Path: Path to the log file.
@@ -51,13 +50,12 @@ class DatasetGenerator:
     def generate(
         self,
         support_examples: Dataset,
-        prompt_template: LLMPrompt,
+        prompt_template: BasePrompt,
         unlabeled_examples: Optional[Dataset] = None,
         support_examples_per_prompt: int = 2,
         num_samples_to_generate: int = 10,
         max_prompt_calls: int = 10,
         return_original_dataset: bool = False,
-        dry_run: bool = False,
         timeout_per_prompt: Optional[int] = None,
     ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
         """Generate a dataset based on a prompt template and support examples.
@@ -65,7 +63,7 @@ class DatasetGenerator:
 
         Args:
             support_examples (Dataset): Support examples to generate the dataset from.
-            prompt_template (LLMPrompt): Prompt template to generate the dataset with.
+            prompt_template (BasePrompt): Prompt template to generate the dataset with.
             unlabeled_examples (Optional[Dataset], optional): Unlabeled examples to annotate. Defaults to None.
             support_examples_per_prompt (int, optional): Number of support examples per prompt. Defaults to 2.
             num_samples_to_generate (int, optional): Number of samples to generate. Defaults to 10.
@@ -80,20 +78,20 @@ class DatasetGenerator:
         """
         # Check if required variables of the prompt template occure in every data point
         assert all(
-            field in support_examples.column_names for field in prompt_template.variables_for_examples
+            field in support_examples.column_names for field in prompt_template.relevant_columns_for_fewshot_examples
         ), "Not all required variables of the prompt template occur in the support examples."
 
         if unlabeled_examples is None:
             assert (
-                len(prompt_template.input_variables) == 1
+                len(prompt_template.input_columns) == 1
             ), "When creating unlabeled data, you can only use one input_variable."
             assert isinstance(
-                prompt_template.input_variables[0], str
+                prompt_template.input_columns[0], str
             ), "The input_variable must be a string, indicating the column to generate unlabeled data for."
 
         if unlabeled_examples is None:
             input_examples = max(max_prompt_calls, num_samples_to_generate) * [
-                {prompt_template.input_variables[0]: ""}
+                {prompt_template.input_columns[0]: ""}
             ]
         else:
             input_examples = unlabeled_examples
@@ -106,7 +104,6 @@ class DatasetGenerator:
             max_prompt_calls,
             num_samples_to_generate,
             return_original_dataset,
-            dry_run,
             timeout_per_prompt
         )
 
@@ -116,7 +113,7 @@ class DatasetGenerator:
         return generated_dataset
 
     def _try_generate(
-        self, prompt_text: str, prompt_template: LLMPrompt, invocation_context: Dict, dry_run: bool
+        self, prompt_text: str, invocation_context: Dict,
     ) -> Optional[str]:
         """Tries to generate a single example. Restrict the time spent on this.
 
@@ -128,9 +125,6 @@ class DatasetGenerator:
         Returns:
             Generated example
         """
-
-        if dry_run:
-            return infer_dummy_example(prompt_template)
 
         # Haystack internally uses timeouts and retries, so we dont have to do it
         # We dont catch authentification errors here, because we want to fail fast
@@ -146,11 +140,10 @@ class DatasetGenerator:
         input_examples: Iterable[Dict],
         support_examples: Dataset,
         support_examples_per_prompt: int,
-        prompt_template: LLMPrompt,
+        prompt_template: BasePrompt,
         max_prompt_calls: int,
         num_samples_to_generate: int,
         return_original_dataset: bool,
-        dry_run: bool,
         timeout_per_prompt: Optional[int],
     ):
         current_tries_left = self._max_tries
@@ -167,10 +160,10 @@ class DatasetGenerator:
 
             prompt_text = prompt_template.get_prompt_text(sampled_support_examples)
             invocation_context = prompt_template.filter_example_by_columns(
-                input_example, prompt_template.input_variables
+                input_example, prompt_template.input_columns
             )
 
-            prediction = self._try_generate(prompt_text, prompt_template, invocation_context, dry_run)
+            prediction = self._try_generate(prompt_text, invocation_context)
 
             if prediction is None:
                 current_tries_left -= 1
@@ -187,32 +180,32 @@ class DatasetGenerator:
 
             # If we have a target variable, we re-use the relevant columns of the input example
             # and add the prediction to the generated dataset
-            if prompt_template.target_variable is not None:
+            if prompt_template.label_column is not None:
                 generated_sample = prompt_template.filter_example_by_columns(
-                    input_example, prompt_template.input_variables
+                    input_example, prompt_template.input_columns
                 )
 
                 for key, value in generated_sample.items():
                     generated_dataset[key].append(value)
 
                 # Try to safely convert the prediction to the type of the target variable
-                if prompt_template.target_variable in input_example:
+                if prompt_template.label_column in input_example:
                     prediction = self._convert_prediction(
-                        prediction, type(input_example[prompt_template.target_variable])
+                        prediction, type(input_example[prompt_template.label_column])
                     )
 
-                generated_dataset[prompt_template.target_variable].append(prediction)
+                generated_dataset[prompt_template.label_column].append(prediction)
 
             else:
-                generated_dataset[prompt_template.input_variables[0]].append(prediction)
+                generated_dataset[prompt_template.input_columns[0]].append(prediction)
 
             log_entry = {
                 "prompt": prompt_text,
                 "invocation_context": invocation_context,
                 "prediction": prediction,
-                "target": prompt_template.target_variable
-                if prompt_template.target_variable is not None
-                else prompt_template.input_variables[0],
+                "target": prompt_template.label_column
+                if prompt_template.label_column is not None
+                else prompt_template.input_columns[0],
             }
             with open(current_log_file, "a", encoding="utf-8") as log_file:
                 log_file.write(f"{json.dumps(log_entry)}\n")

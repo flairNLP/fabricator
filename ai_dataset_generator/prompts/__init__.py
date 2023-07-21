@@ -1,9 +1,8 @@
-from .label_annotation import *
-from .data_generation import *
+from .base import BasePrompt
+from .utils import *
 
 __all__ = [
-    "GenerateUnlabeledDataPrompt",
-    "TextLabelPrompt",
-    "ClassLabelPrompt",
-    "TokenLabelPrompt",
+    "BasePrompt",
+    "infer_prompt_from_dataset",
+    "infer_prompt_from_task_template"
 ]
