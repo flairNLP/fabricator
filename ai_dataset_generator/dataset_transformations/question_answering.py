@@ -48,14 +48,15 @@ def postprocess_squad_format(dataset: Dataset, add_answer_start: bool = True) ->
     def unify_answers(example):
         is_unanswerable = "answer_start" in example
         if is_unanswerable:
-            example["answer"] = {"text": example["answer"], "start": example["answer_start"]}
+            example["answer"] = {"text": [example["answer"]], "answer_start": [example["answer_start"]]}
         else:
-            example["answer"] = {"text": "", "start": -1}
+            example["answer"] = {"text": [], "answer_start": []}
         return example
 
     dataset = dataset.map(unify_answers)
     if "answer_start" in dataset.column_names:
         dataset = dataset.remove_columns("answer_start")
+    dataset = dataset.rename_column("answer", "answers")
     return dataset
 
 
