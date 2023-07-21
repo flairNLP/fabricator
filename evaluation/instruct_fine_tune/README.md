@@ -25,3 +25,6 @@ FT-LLama on evaluation split of Conll03
 | falcon-7B-instruct | 3-shot | 30 | - | 0.13 | 0.18 |
 | guanaco-33b-merged | 3-shot | 20 | 10 | 0.0 | 0.01 |
 | chatGPT | 3-shot | 30 | 30 | 0.31 | 0.72|
+
+Llamav2 | 100  | 67.8 Acc | 0.89 micro f1
+Llamav2 | 3250 | Acc | micro f1
