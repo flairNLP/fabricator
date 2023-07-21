@@ -54,10 +54,7 @@ def run(arguments):
         labels_to_generate = arguments.num_labels//3*2 if index == 0 else arguments.num_labels//3
         unlabeled_examples = preprocessed_dataset.select(range(10, labels_to_generate + 10, 1))
 
-
         for i in range(0, len(unlabeled_examples), arguments.save_steps):
-            fewshot_examples = fewshot_examples.shuffle().select(range(3))
-
             task_descriptions = [
                 "Given a text, first create a difficult question that can be answered using the text. The question must describe the context of the text. Second, extract the answer to this question from the text. The answer must be word for word exactly as it appears in the text.",
                 f"You are a student and a teacher is teaching you about a new topic. Ask a short follow-up question about something the teacher hasn't mentioned yet at all. You must not ask something you already know the answer to from the teacher's explanations. You must not ask for further clarification if the teacher already mentioned something in passing. The question should be self-contained. It must not contain the word \"other\" as in \"which other\" or \"what other\". The question should start with one of {random.sample(question_words, 3)}"]
@@ -116,9 +113,9 @@ def run(arguments):
             filtered_original_datasets.append(original_dataset)
 
             filtered_generated_concatenated_dataset = concatenate_datasets(filtered_generated_datasets)
-            filtered_generated_concatenated_dataset.save_to_disk(f"{dataset_name}-generated-{index}-{i * arguments.save_steps}")
+            filtered_generated_concatenated_dataset.save_to_disk(f"{dataset_name}-generated-{index}-{i}")
             filtered_original_concatenated_dataset = concatenate_datasets(filtered_original_datasets)
-            filtered_original_concatenated_dataset.save_to_disk(f"{dataset_name}-original-{index}-{i * arguments.save_steps}")
+            filtered_original_concatenated_dataset.save_to_disk(f"{dataset_name}-original-{index}-{i}")
     if arguments.push_to_hub:
         filtered_generated_concatenated_dataset.push_to_hub(f"{dataset_name}-generated-{len(filtered_generated_concatenated_dataset)}", private=False)
         filtered_original_concatenated_dataset.push_to_hub(f"{dataset_name}-original-{len(filtered_original_concatenated_dataset)}", private=False)
