@@ -19,7 +19,7 @@ def random_sampler(dataset: Dataset, num_examples: int) -> Dataset:
 
 
 def single_label_task_sampler(
-    dataset: Dataset, label_column: str, num_examples: int, is_return_unused_split: bool = False
+    dataset: Dataset, label_column: str, num_examples: int, return_unused_split: bool = False
 ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
     """Sampler for single label tasks, like text classification
 
@@ -74,7 +74,7 @@ def single_label_task_sampler(
             total_examples_sampled += 1
             pbar.update(1)
 
-    if is_return_unused_split:
+    if return_unused_split:
         unused_indices = list(set(range(len(dataset))) - set(sampled_indices))
         return dataset.select(sampled_indices), dataset.select(unused_indices)
 
