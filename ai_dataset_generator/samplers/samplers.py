@@ -6,7 +6,7 @@ TODO: Implement mechanism: like num_examples == -1 -> infer labels and sample
 
 """
 import random
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Set, Union, Tuple
 
 from datasets import ClassLabel, Dataset, Sequence, Value
 from loguru import logger
@@ -18,7 +18,9 @@ def random_sampler(dataset: Dataset, num_examples: int) -> Dataset:
     return dataset.select(random.sample(range(len(dataset)), num_examples))
 
 
-def single_label_task_sampler(dataset: Dataset, label_column: str, num_examples: int) -> Dataset:
+def single_label_task_sampler(
+    dataset: Dataset, label_column: str, num_examples: int, is_return_unused_split: bool = False
+) -> Union[Dataset, Tuple[Dataset, Dataset]]:
     """Sampler for single label tasks, like text classification
 
     Args:
@@ -71,6 +73,10 @@ def single_label_task_sampler(dataset: Dataset, label_column: str, num_examples:
             sampled_indices.append(idx)
             total_examples_sampled += 1
             pbar.update(1)
+
+    if is_return_unused_split:
+        unused_indices = list(set(range(len(dataset))) - set(sampled_indices))
+        return dataset.select(sampled_indices), dataset.select(unused_indices)
 
     return dataset.select(sampled_indices)
 
