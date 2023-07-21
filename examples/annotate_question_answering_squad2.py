@@ -25,6 +25,8 @@ def run(arguments):
     org = load_dataset(arguments.dataset, split=arguments.split)
     dataset_all_questions = preprocess_squad_format(org)
 
+    dataset_name = f"qa-dataset"
+
     #dataset_generated_loaded = load_dataset("julianrisch/generated-qa-dataset-4", split="train")
     dataset_answerable_questions = dataset_all_questions.filter(lambda sample: sample['answer'] != '').shuffle()
     dataset_unanswerable_questions = dataset_all_questions.filter(lambda sample: sample['answer'] == '').shuffle()
@@ -42,7 +44,7 @@ def run(arguments):
     filtered_original_datasets = []
     for index, dataset in enumerate([dataset_answerable_questions, dataset_unanswerable_questions]):
         fewshot_examples = dataset.select([1, 2, 3])
-        unlabeled_examples = dataset.select([10, 20, 30, 40, 50])
+        unlabeled_examples = dataset.select(range(4, arguments.num_labels + 4, 1))
 
         prompt = TextLabelPrompt(
             input_variables=arguments.input_variables,
@@ -53,57 +55,61 @@ def run(arguments):
         raw_prompt = prompt.get_prompt_text(fewshot_examples)
         print(raw_prompt)
 
-        generated_dataset, original_dataset = generator.generate(
-            support_examples=fewshot_examples,
-            unlabeled_examples=unlabeled_examples,
-            prompt_template=prompt,
-            max_prompt_calls=arguments.max_prompt_calls,
-            support_examples_per_prompt=arguments.support_examples_per_prompt,
-            return_original_dataset=True,
-        )
+        for i in range(0, len(unlabeled_examples), arguments.save_steps):
+            current_unlabeled_examples = unlabeled_examples.select(range(i, min(len(unlabeled_examples), i + arguments.save_steps)))
+            generated_dataset, original_dataset = generator.generate(
+                support_examples=fewshot_examples,
+                unlabeled_examples=current_unlabeled_examples,
+                prompt_template=prompt,
+                max_prompt_calls=arguments.max_prompt_calls,
+                support_examples_per_prompt=arguments.support_examples_per_prompt,
+                return_original_dataset=True,
+            )
 
-        assert len(generated_dataset) == len(original_dataset)
+            assert len(generated_dataset) == len(original_dataset)
 
-        # filter bad samples from generated dataset
-        if index == 0:  # answerable questions
-            generated_dataset = postprocess_squad_format(generated_dataset, add_answer_start=True)
-            indices_to_keep = \
-            generated_dataset.map(lambda example, idx: {'idx': idx if example['answers']['answer_start'][0] >= 0 else -1},
-                                  with_indices=True)['idx']
-        else:  # unanswerable questions
-            generated_dataset = postprocess_squad_format(generated_dataset, add_answer_start=False)
-            indices_to_keep = \
-            generated_dataset.map(lambda example, idx: {'idx': idx if example['answers']['answer_start'] == [] else -1},
-                                  with_indices=True)['idx']
-        indices_to_keep = [i for i in indices_to_keep if i != -1]
-        # TODO default representation of unanswerable is { "text": [], "answer_start": [] } sequence https://huggingface.co/datasets/squad_v2/viewer/squad_v2/train?row=130300
+            # filter bad samples from generated dataset
+            if index == 0:  # answerable questions
+                generated_dataset = postprocess_squad_format(generated_dataset, add_answer_start=True)
+                indices_to_keep = \
+                generated_dataset.map(lambda example, idx: {'idx': idx if example['answers']['answer_start'][0] >= 0 else -1},
+                                      with_indices=True)['idx']
+            else:  # unanswerable questions
+                generated_dataset = postprocess_squad_format(generated_dataset, add_answer_start=False)
+                indices_to_keep = \
+                generated_dataset.map(lambda example, idx: {'idx': idx if example['answers']['answer_start'] == [] else -1},
+                                      with_indices=True)['idx']
+            original_dataset = postprocess_squad_format(original_dataset, add_answer_start=False)
+            indices_to_keep = [i for i in indices_to_keep if i != -1]
+            # TODO default representation of unanswerable is { "text": [], "answer_start": [] } sequence https://huggingface.co/datasets/squad_v2/viewer/squad_v2/train?row=130300
 
-        generated_dataset = generated_dataset.select(indices_to_keep)
-        original_dataset = original_dataset.select(indices_to_keep)
-
-
-        # add id and title to generated dataset
-        generated_dataset = generated_dataset.add_column("id", original_dataset['id'])
-        generated_dataset = generated_dataset.add_column("title", original_dataset['title'])
-
-        features = generated_dataset.features
-        features["answers"] = Sequence(feature={'text': Value(dtype='string', id=None), 'answer_start': Value(dtype='int64', id=None)}, length=-1, id=None)
-        generated_dataset = generated_dataset.cast(features)
-
-        filtered_generated_datasets.append(generated_dataset)
-        filtered_original_datasets.append(original_dataset)
+            generated_dataset = generated_dataset.select(indices_to_keep)
+            original_dataset = original_dataset.select(indices_to_keep)
 
 
-    print(filtered_generated_datasets[0].features.type)
-    print(filtered_generated_datasets[1].features.type)
-    assert filtered_generated_datasets[0].features.type == filtered_generated_datasets[1].features.type
-    filtered_generated_concatenated_dataset = concatenate_datasets(filtered_generated_datasets)
-    #assert filtered_original_datasets[0].features.type == filtered_original_datasets[1].features.type
-    #filtered_original_concatenated_dataset = concatenate_datasets(filtered_original_datasets)
+            # add id and title to generated dataset
+            generated_dataset = generated_dataset.add_column("id", original_dataset['id'])
+            generated_dataset = generated_dataset.add_column("title", original_dataset['title'])
+
+            features = generated_dataset.features
+            features["answers"] = Sequence(feature={'text': Value(dtype='string', id=None), 'answer_start': Value(dtype='int64', id=None)}, length=-1, id=None)
+            generated_dataset = generated_dataset.cast(features)
+
+            features = original_dataset.features
+            features["answers"] = Sequence(feature={'text': Value(dtype='string', id=None), 'answer_start': Value(dtype='int64', id=None)}, length=-1, id=None)
+            original_dataset = original_dataset.cast(features)
+
+            filtered_generated_datasets.append(generated_dataset)
+            filtered_original_datasets.append(original_dataset)
+
+
+            filtered_generated_concatenated_dataset = concatenate_datasets(filtered_generated_datasets)
+            filtered_generated_concatenated_dataset.save_to_disk(f"{dataset_name}-generated-{index}-{i * arguments.save_steps}")
+            #filtered_original_concatenated_dataset = concatenate_datasets(filtered_original_datasets)
+            #filtered_original_concatenated_dataset.save_to_disk(f"{dataset_name}-original-{index}-{i * arguments.save_steps}")
     if arguments.push_to_hub:
-        #filtered_generated_concatenated_dataset._task_templates = dataset_all_questions.task_templates # TODO has no effect
-        filtered_generated_concatenated_dataset.push_to_hub(f"generated-qa-dataset-{len(filtered_generated_concatenated_dataset)}", private=True)
-        #filtered_original_concatenated_dataset.push_to_hub(f"original-qa-dataset-{len(filtered_original_concatenated_dataset)}", private=True)
+        filtered_generated_concatenated_dataset.push_to_hub(dataset_name + "-generated", private=True)
+        #filtered_original_concatenated_dataset.push_to_hub(dataset_name + "-original", private=True)
 
 
 if __name__ == "__main__":
@@ -120,8 +126,10 @@ if __name__ == "__main__":
     parser.add_argument("--input_variables", type=str, nargs="+", default=["context", "question"])
     parser.add_argument("--target_variable", type=str, default="answer")
     parser.add_argument("--output_format", type=str, default="text")
-    parser.add_argument("--max_prompt_calls", type=int, default=2)
+    parser.add_argument("--max_prompt_calls", type=int, default=20)
     parser.add_argument("--support_examples_per_prompt", type=int, default=1)
     parser.add_argument("--push_to_hub", action="store_false") #TODO set default back to store_true
+    parser.add_argument("--save_steps", type=int, default=5)
+    parser.add_argument("--num_labels", type=int, default=10)
     args = parser.parse_args()
     run(args)
