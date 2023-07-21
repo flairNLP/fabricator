@@ -2,7 +2,7 @@ import os
 import random
 from argparse import ArgumentParser
 
-from datasets import load_dataset, concatenate_datasets
+from datasets import Sequence, Value, load_dataset, concatenate_datasets
 from haystack.nodes import PromptNode
 from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.dataset_transformations.question_answering import (
@@ -68,12 +68,12 @@ def run(arguments):
         if index == 0:  # answerable questions
             generated_dataset = postprocess_squad_format(generated_dataset, add_answer_start=True)
             indices_to_keep = \
-            generated_dataset.map(lambda example, idx: {'idx': idx if example['answer']['start'] >= 0 else -1},
+            generated_dataset.map(lambda example, idx: {'idx': idx if example['answers']['answer_start'][0] >= 0 else -1},
                                   with_indices=True)['idx']
         else:  # unanswerable questions
             generated_dataset = postprocess_squad_format(generated_dataset, add_answer_start=False)
             indices_to_keep = \
-            generated_dataset.map(lambda example, idx: {'idx': idx if example['answer']['start'] == -1 else -1},
+            generated_dataset.map(lambda example, idx: {'idx': idx if example['answers']['answer_start'] == [] else -1},
                                   with_indices=True)['idx']
         indices_to_keep = [i for i in indices_to_keep if i != -1]
         # TODO default representation of unanswerable is { "text": [], "answer_start": [] } sequence https://huggingface.co/datasets/squad_v2/viewer/squad_v2/train?row=130300
@@ -81,22 +81,21 @@ def run(arguments):
         generated_dataset = generated_dataset.select(indices_to_keep)
         original_dataset = original_dataset.select(indices_to_keep)
 
-        # structure answers column
-        def structure_column(example):
-            example['answers'] = {'text': [example['answer']['text']], 'answer_start': [example['answer']['start']]}
-            return example
-
-        generated_dataset = generated_dataset.map(lambda example: structure_column(example))
-        generated_dataset = generated_dataset.remove_columns('answer')
 
         # add id and title to generated dataset
         generated_dataset = generated_dataset.add_column("id", original_dataset['id'])
         generated_dataset = generated_dataset.add_column("title", original_dataset['title'])
 
+        features = generated_dataset.features
+        features["answers"] = Sequence(feature={'text': Value(dtype='string', id=None), 'answer_start': Value(dtype='int64', id=None)}, length=-1, id=None)
+        generated_dataset = generated_dataset.cast(features)
+
         filtered_generated_datasets.append(generated_dataset)
         filtered_original_datasets.append(original_dataset)
 
 
+    print(filtered_generated_datasets[0].features.type)
+    print(filtered_generated_datasets[1].features.type)
     assert filtered_generated_datasets[0].features.type == filtered_generated_datasets[1].features.type
     filtered_generated_concatenated_dataset = concatenate_datasets(filtered_generated_datasets)
     #assert filtered_original_datasets[0].features.type == filtered_original_datasets[1].features.type
