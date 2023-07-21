@@ -31,12 +31,29 @@ def run(arguments):
     filtered_generated_datasets = []
     filtered_original_datasets = []
 
+    def merge_columns(example):
+        if example["answer"] == "":
+            example["qa"] = example["question"]
+            return example
+        example["qa"] = f"{example['question']}\n{example['answer']}"
+        return example
+
+    def split_columns(example):
+        entries = example["qa"].split("\n")
+        example["question"] = entries[0]
+        if len(entries) == 1:
+            example["answer"] = ""
+            return example
+        example["answer"] = entries[1]
+        return example
 
     for index, dataset in enumerate([dataset_answerable_questions, dataset_unanswerable_questions]):
         preprocessed_dataset = preprocess_squad_format(dataset)
+        preprocessed_dataset = preprocessed_dataset.map(merge_columns)
         fewshot_examples = preprocessed_dataset.select(range(10))
         labels_to_generate = arguments.num_labels//3*2 if index == 0 else arguments.num_labels//3
         unlabeled_examples = preprocessed_dataset.select(range(10, labels_to_generate + 10, 1))
+
 
         for i in range(0, len(unlabeled_examples), arguments.save_steps):
             fewshot_examples = fewshot_examples.shuffle().select(range(3))
@@ -64,6 +81,8 @@ def run(arguments):
                 return_original_dataset=True,
             )
 
+            generated_dataset = generated_dataset.map(split_columns)
+
             assert len(generated_dataset) == len(original_dataset)
 
             # filter bad samples from generated dataset
@@ -85,6 +104,7 @@ def run(arguments):
             # add id and title to generated dataset
             generated_dataset = generated_dataset.add_column("id", original_dataset['id'])
             generated_dataset = generated_dataset.add_column("title", original_dataset['title'])
+            generated_dataset = generated_dataset.remove_columns("qa")
 
             ids_to_keep = set(original_dataset['id'])
             original_dataset = dataset.filter(lambda example: example['id'] in ids_to_keep)
@@ -116,8 +136,8 @@ if __name__ == "__main__":
     )
     parser.add_argument("--dataset", type=str, default="squad_v2")
     parser.add_argument("--split", type=str, default="train")
-    parser.add_argument("--input_variables", type=str, nargs="+", default=["context", "question"])
-    parser.add_argument("--target_variable", type=str, default="answer")
+    parser.add_argument("--input_variables", type=str, nargs="+", default=["context"])
+    parser.add_argument("--target_variable", type=str, default="qa")
     parser.add_argument("--output_format", type=str, default="text")
     parser.add_argument("--max_prompt_calls", type=int, default=20)
     parser.add_argument("--support_examples_per_prompt", type=int, default=1)
