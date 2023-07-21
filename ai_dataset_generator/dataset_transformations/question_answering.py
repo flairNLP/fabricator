@@ -35,14 +35,27 @@ def postprocess_squad_format(dataset: Dataset, add_answer_start: bool = True) ->
     Returns:
         Dataset: A huggingface dataset in SQuAD format with nested answers.
     """
+    # remove punctuation and whitespace from the start and end of the answer
+    def remove_punctuation(example):
+        example["answer"] = example["answer"].strip(".,;!? ")
+        return example
+
+    dataset = dataset.map(remove_punctuation)
+
     if add_answer_start:
         dataset = dataset.map(calculate_answer_start)
 
     def unify_answers(example):
-        example["answer"] = {"text": example["answer"], "start": example["answer_start"]}
+        is_unanswerable = "answer_start" in example
+        if is_unanswerable:
+            example["answer"] = {"text": example["answer"], "start": example["answer_start"]}
+        else:
+            example["answer"] = {"text": "", "start": -1}
         return example
 
-    dataset = dataset.map(unify_answers).remove_columns("answer_start")
+    dataset = dataset.map(unify_answers)
+    if "answer_start" in dataset.column_names:
+        dataset = dataset.remove_columns("answer_start")
     return dataset
 
 
@@ -55,7 +68,7 @@ def calculate_answer_start(example):
     Returns:
         Dict: The SQuAD example with the answer start index added.
     """
-    answer_start = example["context"].find(example["answer"])
+    answer_start = example["context"].lower().find(example["answer"].lower())
     if answer_start < 0:
         logger.info(
             'Could not calculate the answer start because the context "{}" ' 'does not contain the answer "{}".',
@@ -65,11 +78,12 @@ def calculate_answer_start(example):
         answer_start = -1
     else:
         # check that the answer doesn't occur more than once in the context
-        second_answer_start = example["context"].find(example["answer"], answer_start + 1)
+        second_answer_start = example["context"].lower().find(example["answer"].lower(), answer_start + 1)
         if second_answer_start >= 0:
             logger.info("Could not calculate the answer start because the context contains the answer more than once.")
             answer_start = -1
         else:
-            pass
+            # correct potential wrong capitalization of the answer compared to the context
+            example["answer"] = example["context"][answer_start : answer_start + len(example["answer"])]
     example["answer_start"] = answer_start
     return example
