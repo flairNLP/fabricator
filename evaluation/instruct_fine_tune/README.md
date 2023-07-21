@@ -18,7 +18,8 @@ FT-LLama on evaluation split of Conll03
 | Model | Prompt Type | Generated | Sampled | Accuracy | f1-score | 
 | --- | --- | --- | --- | --- | --- |
 | FT-LLama | zero-shot | 100  | 100 | 0.664 | 0.89 |
-| FT-LLama | zero-shot | 1000 | 1000 | 0.47 | - |
+| FT-LLama | zero-shot | 1000 | 1000 | 0.47 | 0.81 |
+| FT-LLama | zero-shot | 3250 | 3200 | 0.54 | 0.82 |
 | LLama | zero-shot | 10000 | - | - | - |
 | LLama | 3-shot | 100 | - | - | - |
 | falcon-7B-instruct | zero-shot | 30 | - | - | - |
@@ -26,5 +27,11 @@ FT-LLama on evaluation split of Conll03
 | guanaco-33b-merged | 3-shot | 20 | 10 | 0.0 | 0.01 |
 | chatGPT | 3-shot | 30 | 30 | 0.31 | 0.72|
 
+<<<<<<< HEAD
 Llamav2 | 100  | 67.8 Acc | 0.89 micro f1
 Llamav2 | 3250 | Acc | micro f1
+=======
+
+<img width="568" alt="Screenshot 2023-07-20 at 09 56 50" src="https://github.com/flairNLP/ai-dataset-generator/assets/22773355/273c3dbf-1e8d-481e-9485-9cad4024aca4">
+
+>>>>>>> 5b82e622603c72087ab497bba929be0e80613b3b
