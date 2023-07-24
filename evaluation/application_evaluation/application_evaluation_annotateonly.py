@@ -1,3 +1,4 @@
+from ai_dataset_generator.samplers.samplers import single_label_stratified_sample
 from evaluation.application_evaluation.application_evaluation import *
 
 
@@ -14,15 +15,23 @@ def run_only_annotate(arguments):
     num_few_shot_examples = arguments.num_fewshot_examples_per_class * len(unique_labels)
     num_few_shot_examples = min(num_few_shot_examples, len(dataset_train))
     logger.info("using {} few shot examples", num_few_shot_examples)
-    fewshot_examples, dataset_train_unused = single_label_task_sampler(dataset_train, arguments.target_variable, num_few_shot_examples, return_unused_split=True)
+    fewshot_examples, dataset_train_unused = single_label_stratified_sample(dataset_train, arguments.target_variable, arguments.num_fewshot_examples_per_class, return_unused_split=True)
     labels = fewshot_examples["label"]
     logger.info("few shot examples label distribution: {}", Counter(labels))
     # save to disk for reproducibility
     filepath = DATASETPATH / f"{arguments.dataset}_fewshot_{len(fewshot_examples)}"
     fewshot_examples.save_to_disk(filepath)
 
+    # convert
+    fewshot_examples, label_options = convert_label_ids_to_texts(
+        fewshot_examples,
+        arguments.target_variable,
+        expanded_label_mapping=arguments.label2human_friendly_label,
+        return_label_options=True,
+    )
+
     # get a subset of the training data that we will then annotate
-    dataset_train_subset = single_label_task_sampler(dataset_train_unused, arguments.target_variable, 10000)
+    dataset_train_subset = single_label_stratified_sample(dataset_train_unused, arguments.target_variable, 10000)
     labels = dataset_train_subset["label"]
     logger.info("subset train label distribution: {}", Counter(labels))
     # save to disk for reproducibility
@@ -36,14 +45,6 @@ def run_only_annotate(arguments):
     # save to disk for reproducibility
     filepath = DATASETPATH / f"{arguments.dataset}_trainsubset_labelsremoved_{len(dataset_train_subset_nolabels)}"
     dataset_train_subset_nolabels.save_to_disk(filepath)
-
-    # convert
-    fewshot_examples, label_options = convert_label_ids_to_texts(
-        fewshot_examples,
-        arguments.target_variable,
-        expanded_label_mapping=arguments.label2human_friendly_label,
-        return_label_options=True,
-    )
 
     # annotate a dataset using the power of LLM
     dataset_train_subset_nolabels_autolabeled = annotate_dataset(

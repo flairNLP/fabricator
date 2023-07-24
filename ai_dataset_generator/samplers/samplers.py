@@ -6,6 +6,7 @@ TODO: Implement mechanism: like num_examples == -1 -> infer labels and sample
 
 """
 import random
+from collections import defaultdict
 from typing import Dict, List, Set, Union, Tuple
 
 from datasets import ClassLabel, Dataset, Sequence, Value
@@ -16,6 +17,37 @@ from tqdm import tqdm
 def random_sampler(dataset: Dataset, num_examples: int) -> Dataset:
     """Random sampler"""
     return dataset.select(random.sample(range(len(dataset)), num_examples))
+
+
+def single_label_stratified_sample(dataset: Dataset, column: str, num_examples_per_class: int, return_unused_split: bool = False) -> Dataset:
+    # Ensure the 'k' value is valid
+    if num_examples_per_class <= 0:
+        raise ValueError("'num_examples_per_class' should be a positive integer.")
+
+    # Group the indices of each unique value in 'target' column
+    targets = defaultdict(list)
+    for i, elem in enumerate(dataset[column]):
+        targets[elem].append(i)
+
+    # Check if k is smaller or equal than the size of the smallest group
+    if num_examples_per_class > min(len(indices) for indices in targets.values()):
+        raise ValueError(
+            "'num_examples_per_class' is greater than the size of the smallest group in the target column."
+        )
+
+    # Stratified sampling
+    sample_indices = []
+    for indices in targets.values():
+        sample_indices.extend(random.sample(indices, num_examples_per_class))
+
+    # Create new dataset from the sample
+    sample_dataset = dataset.select(sample_indices)
+
+    if return_unused_split:
+        unused_indices = list(set(range(len(dataset))) - set(sample_indices))
+        return dataset.select(sample_indices), dataset.select(unused_indices)
+
+    return sample_dataset
 
 
 def single_label_task_sampler(
