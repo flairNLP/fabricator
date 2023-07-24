@@ -1,18 +1,19 @@
 import json
-import random
 import time
-
-from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Union, Tuple
+from collections import defaultdict
+from typing import Any, Dict, Optional, Union, Tuple, List
+
+from tqdm import tqdm
+from loguru import logger
 
 from datasets import Dataset
+from numpy.random import choice
 from haystack.nodes import PromptNode
 from haystack.nodes import PromptTemplate as HaystackPromptTemplate
-from loguru import logger
-from tqdm import tqdm
 
 from ai_dataset_generator.prompts.base import BasePrompt
+from ai_dataset_generator.samplers import single_label_stratified_sample
 from ai_dataset_generator.utils import log_dir, create_timestamp_path
 
 
@@ -49,65 +50,63 @@ class DatasetGenerator:
 
     def generate(
         self,
-        support_examples: Dataset,
         prompt_template: BasePrompt,
-        unlabeled_examples: Optional[Dataset] = None,
-        support_examples_per_prompt: int = 2,
-        num_samples_to_generate: int = 10,
+        fewshot_dataset: Optional[Dataset] = None,
+        fewshot_examples_per_class: int = 1,
+        fewshot_label_sampling_strategy: str = None,
+        fewshot_sampling_column: str = None,
+        unlabeled_dataset: Optional[Dataset] = None,
+        return_unlabeled_dataset: bool = False,
         max_prompt_calls: int = 10,
-        return_original_dataset: bool = False,
+        num_samples_to_generate: int = 10,
         timeout_per_prompt: Optional[int] = None,
     ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
         """Generate a dataset based on a prompt template and support examples.
         Optionally, unlabeled examples can be provided to annotate unlabeled data.
 
         Args:
-            support_examples (Dataset): Support examples to generate the dataset from.
             prompt_template (BasePrompt): Prompt template to generate the dataset with.
-            unlabeled_examples (Optional[Dataset], optional): Unlabeled examples to annotate. Defaults to None.
-            support_examples_per_prompt (int, optional): Number of support examples per prompt. Defaults to 2.
-            num_samples_to_generate (int, optional): Number of samples to generate. Defaults to 10.
+            fewshot_dataset (Dataset): Support examples to generate the dataset from. Defaults to None.
+            fewshot_examples_per_class (int, optional): Number of support examples for a certain class per prompt.
+                Defaults to 1.
+            fewshot_label_sampling_strategy (str, optional): Sampling strategy for support examples. Defaults to
+                None. "uniform" sampling strategy means that one label is sampled and only fewshot examples for that
+                class are used. "stratified" sampling strategy means that all classes in support examples are used.
+            fewshot_sampling_column (str, optional): Column to sample from. Defaults to None and function will try
+                to sample from the generate_data_for_column attribute of the prompt template.
+            unlabeled_dataset (Optional[Dataset], optional): Unlabeled examples to annotate. Defaults to None.
+            return_unlabeled_dataset (bool, optional): Whether to return the original dataset. Defaults to False.
             max_prompt_calls (int, optional): Maximum number of prompt calls. Defaults to 10.
-            return_original_dataset (bool, optional): Whether to return the original dataset. Defaults to False.
-            dry_run (bool, optional): Whether to actually generate the examples or just return dummy examples.
+            num_samples_to_generate (int, optional): Number of samples to generate. Defaults to 10.
             timeout_per_prompt (Optional[int], optional): Timeout per prompt call. Defaults to None.
 
         Returns:
             Union[Dataset, Tuple[Dataset, Dataset]]: Generated dataset or tuple of generated dataset and original
             dataset.
         """
-        # Check if required variables of the prompt template occure in every data point
-        assert all(
-            field in support_examples.column_names for field in prompt_template.relevant_columns_for_fewshot_examples
-        ), "Not all required variables of the prompt template occur in the support examples."
+        if fewshot_dataset:
+            self._assert_fewshot_dataset_matches_prompt(prompt_template, fewshot_dataset)
 
-        if unlabeled_examples is None:
-            assert (
-                len(prompt_template.input_columns) == 1
-            ), "When creating unlabeled data, you can only use one input_variable."
-            assert isinstance(
-                prompt_template.input_columns[0], str
-            ), "The input_variable must be a string, indicating the column to generate unlabeled data for."
+        assert fewshot_label_sampling_strategy in [None, "uniform", "stratified"], \
+            "Sampling strategy must be 'uniform' or 'stratified'"
 
-        if unlabeled_examples is None:
-            input_examples = max(max_prompt_calls, num_samples_to_generate) * [
-                {prompt_template.input_columns[0]: ""}
-            ]
-        else:
-            input_examples = unlabeled_examples
+        if fewshot_dataset and not fewshot_sampling_column:
+            fewshot_sampling_column = prompt_template.generate_data_for_column[0]
 
         generated_dataset, original_dataset = self._inner_generate_loop(
-            input_examples,  # type: ignore
-            support_examples,
-            support_examples_per_prompt,
             prompt_template,
+            fewshot_dataset,
+            fewshot_examples_per_class,
+            fewshot_label_sampling_strategy,
+            fewshot_sampling_column,
+            unlabeled_dataset,
+            return_unlabeled_dataset,
             max_prompt_calls,
             num_samples_to_generate,
-            return_original_dataset,
             timeout_per_prompt
         )
 
-        if return_original_dataset:
+        if return_unlabeled_dataset:
             return generated_dataset, original_dataset
 
         return generated_dataset
@@ -137,13 +136,15 @@ class DatasetGenerator:
 
     def _inner_generate_loop(
         self,
-        input_examples: Iterable[Dict],
-        support_examples: Dataset,
-        support_examples_per_prompt: int,
         prompt_template: BasePrompt,
+        fewshot_dataset: Dataset,
+        fewshot_examples_per_class: int,
+        fewshot_label_sampling_strategy: str,
+        fewshot_sampling_column: str,
+        unlabeled_dataset: Dataset,
+        return_unlabeled_dataset: bool,
         max_prompt_calls: int,
         num_samples_to_generate: int,
-        return_original_dataset: bool,
         timeout_per_prompt: Optional[int],
     ):
         current_tries_left = self._max_tries
@@ -152,16 +153,34 @@ class DatasetGenerator:
         generated_dataset = defaultdict(list)
         original_dataset = defaultdict(list)
 
-        for prompt_call_idx, input_example in tqdm(
-            enumerate(input_examples, start=1), desc="Generating dataset", total=len(input_examples)
-        ):
-            sampled_support_indices = random.sample(range(len(support_examples)), support_examples_per_prompt)
-            sampled_support_examples = support_examples.select(sampled_support_indices)
+        if unlabeled_dataset:
+            api_calls = range(min(max_prompt_calls, num_samples_to_generate, len(unlabeled_dataset)))
+        else:
+            api_calls = range(min(max_prompt_calls, num_samples_to_generate))
 
-            prompt_text = prompt_template.get_prompt_text(sampled_support_examples)
-            invocation_context = prompt_template.filter_example_by_columns(
-                input_example, prompt_template.input_columns
-            )
+        for prompt_call_idx, unlabeled_example_idx in tqdm(
+            enumerate(api_calls, start=1), desc="Generating dataset", total=len(api_calls)
+        ):
+            fewshot_examples = None
+            invocation_context = None
+            prompt_labels = None
+
+            if prompt_template.label_options:
+                prompt_labels = choice(prompt_template.label_options, 1)[0]
+
+            if fewshot_dataset:
+                prompt_labels, fewshot_examples = self._sample_fewshot_examples(
+                    prompt_template, fewshot_dataset, fewshot_examples_per_class, fewshot_label_sampling_strategy,
+                    fewshot_sampling_column
+                )
+
+            prompt_text = prompt_template.get_prompt_text(prompt_labels, fewshot_examples)
+
+            if unlabeled_dataset:
+                unlabeled_example = unlabeled_dataset[unlabeled_example_idx]
+                invocation_context = prompt_template.filter_example_by_columns(
+                    unlabeled_example, prompt_template.fewshot_example_columns
+                )
 
             prediction = self._try_generate(prompt_text, invocation_context)
 
@@ -171,7 +190,7 @@ class DatasetGenerator:
                 if current_tries_left == 0:
                     logger.warning(
                         f"Max tries ({self._max_tries}) exceeded. Returning generated dataset with"
-                        " {len(generated_dataset)} examples."
+                        f" {len(generated_dataset)} examples."
                     )
                     break
 
@@ -180,38 +199,38 @@ class DatasetGenerator:
 
             # If we have a target variable, we re-use the relevant columns of the input example
             # and add the prediction to the generated dataset
-            if prompt_template.label_column is not None:
+            if prompt_template.generate_data_for_column:
                 generated_sample = prompt_template.filter_example_by_columns(
-                    input_example, prompt_template.input_columns
+                    unlabeled_example, prompt_template.fewshot_example_columns
                 )
 
                 for key, value in generated_sample.items():
                     generated_dataset[key].append(value)
 
                 # Try to safely convert the prediction to the type of the target variable
-                if prompt_template.label_column in input_example:
+                if not prompt_template.generate_data_for_column[0] in unlabeled_example:
                     prediction = self._convert_prediction(
-                        prediction, type(input_example[prompt_template.label_column])
+                        prediction, type(prompt_template.generate_data_for_column[0])
                     )
 
-                generated_dataset[prompt_template.label_column].append(prediction)
+                generated_dataset[prompt_template.generate_data_for_column[0]].append(prediction)
 
             else:
-                generated_dataset[prompt_template.input_columns[0]].append(prediction)
+                generated_dataset[prompt_template.DEFAULT_COLUMN[0]].append(prediction)
 
             log_entry = {
                 "prompt": prompt_text,
                 "invocation_context": invocation_context,
                 "prediction": prediction,
-                "target": prompt_template.label_column
-                if prompt_template.label_column is not None
-                else prompt_template.input_columns[0],
+                "target": prompt_template.generate_data_for_column[0]
+                if prompt_template.generate_data_for_column
+                else prompt_template.DEFAULT_COLUMN[0],
             }
             with open(current_log_file, "a", encoding="utf-8") as log_file:
                 log_file.write(f"{json.dumps(log_entry)}\n")
 
-            if return_original_dataset:
-                for key, value in input_example.items():
+            if return_unlabeled_dataset:
+                for key, value in unlabeled_example.items():
                     original_dataset[key].append(value)
 
             if prompt_call_idx >= max_prompt_calls:
@@ -227,7 +246,7 @@ class DatasetGenerator:
 
         generated_dataset = Dataset.from_dict(generated_dataset)
 
-        if return_original_dataset:
+        if return_unlabeled_dataset:
             original_dataset = Dataset.from_dict(original_dataset)
             return generated_dataset, original_dataset
 
@@ -255,3 +274,42 @@ class DatasetGenerator:
                 "Returning original prediction.", repr(prediction)
             )
             return prediction
+
+    @staticmethod
+    def _sample_fewshot_examples(
+            prompt_template: BasePrompt,
+            fewshot_dataset: Dataset,
+            fewshot_examples_per_class: int,
+            fewshot_label_sampling_strategy: str,
+            fewshot_sampling_column: str
+    ) -> Tuple[Union[List[str], str], Dataset]:
+        if fewshot_label_sampling_strategy == "uniform":
+            prompt_labels = choice(prompt_template.label_options, 1)[0]
+            fewshot_examples = fewshot_dataset.filter(
+                lambda example: example[fewshot_sampling_column] == prompt_labels
+            ).shuffle().select(range(fewshot_examples_per_class))
+
+        elif fewshot_label_sampling_strategy == "stratified":
+            prompt_labels = prompt_template.label_options
+            fewshot_examples = single_label_stratified_sample(
+                fewshot_dataset,
+                fewshot_sampling_column,
+                fewshot_examples_per_class
+            )
+
+        else:
+            prompt_labels = None
+            fewshot_examples = fewshot_dataset.shuffle().select(range(fewshot_examples_per_class))
+
+        assert len(fewshot_examples) > 0, f"Could not find any fewshot examples for label(s) {prompt_labels}." \
+                                          f"Ensure that labels of fewshot examples match the label_options " \
+                                          f"from the prompt."
+
+        return prompt_labels, fewshot_examples
+
+    @staticmethod
+    def _assert_fewshot_dataset_matches_prompt(prompt_template: BasePrompt, fewshot_dataset: Dataset) -> None:
+        """Asserts that the prompt template is valid and all columns are present in the fewshot dataset."""
+        assert all(
+            field in fewshot_dataset.column_names for field in prompt_template.relevant_columns_for_fewshot_examples
+        ), "Not all required variables of the prompt template occur in the support examples."

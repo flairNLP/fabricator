@@ -6,7 +6,9 @@ TODO: Implement mechanism: like num_examples == -1 -> infer labels and sample
 
 """
 import random
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Set, Union, Tuple
+from collections import defaultdict, deque
+from itertools import cycle
 
 from datasets import ClassLabel, Dataset, Sequence, Value
 from loguru import logger
@@ -73,6 +75,91 @@ def single_label_task_sampler(dataset: Dataset, label_column: str, num_examples:
             pbar.update(1)
 
     return dataset.select(sampled_indices)
+
+
+def _alternate_classes(dataset: Dataset, column: str) -> Dataset:
+    """Alternate the occurrence of each class in the dataset.
+
+    Args:
+        dataset: Dataset
+        column: Name of the column to alternate the classes of
+
+    Returns:
+        Dataset with the classes alternated
+    """
+
+    # Group the indices of each unique value in 'target' column
+    targets = defaultdict(deque)
+    for i, elem in enumerate(dataset[column]):
+        targets[elem].append(i)
+
+    # Create a cycle iterator from targets
+    targets_cycle = cycle(targets.keys())
+
+    # Alternate the occurrence of each class
+    alternate_indices = []
+    for target in targets_cycle:
+        if not targets[target]:  # If this class has no more indices, remove it from the cycle
+            del targets[target]
+        else:  # Otherwise, add the next index of this class to the list
+            alternate_indices.append(targets[target].popleft())
+
+        # If there are no more indices, break the loop
+        if not targets:
+            break
+
+    # Create new dataset from the alternate indices
+    alternate_dataset = dataset.select(alternate_indices)
+
+    return alternate_dataset
+
+
+def single_label_stratified_sample(
+        dataset: Dataset,
+        label_column: str,
+        num_examples_per_class: int,
+        return_unused_split: bool = False
+) -> Union[Dataset, Tuple[Dataset, Dataset]]:
+    """Stratified sampling for single label tasks, like text classification.
+
+    Args:
+        dataset: Dataset
+        label_column: Name of the label column
+        num_examples_per_class: Number of examples to sample per class
+        return_unused_split: If True, return the unused split of the dataset
+
+    Returns:
+        Dataset: Stratified sample of the dataset
+    """
+    # Ensure the 'k' value is valid
+    if num_examples_per_class <= 0:
+        raise ValueError("'num_examples_per_class' should be a positive integer.")
+
+    # Group the indices of each unique value in 'target' column
+    targets = defaultdict(list)
+    for i, elem in enumerate(dataset[label_column]):
+        targets[elem].append(i)
+
+    # Check if k is smaller or equal than the size of the smallest group
+    if num_examples_per_class > min(len(indices) for indices in targets.values()):
+        raise ValueError(
+            "'num_examples_per_class' is greater than the size of the smallest group in the target column."
+        )
+
+    # Stratified sampling
+    sample_indices = []
+    for indices in targets.values():
+        sample_indices.extend(random.sample(indices, num_examples_per_class))
+
+    # Create new dataset from the sample
+    sample_dataset = dataset.select(sample_indices)
+    sample_dataset = _alternate_classes(sample_dataset, label_column)
+
+    if return_unused_split:
+        unused_indices = list(set(range(len(dataset))) - set(sample_indices))
+        return sample_dataset, dataset.select(unused_indices)
+
+    return sample_dataset
 
 
 def ml_mc_sampler(dataset: Dataset, labels_column: str, num_examples: int) -> Dataset:
