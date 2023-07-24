@@ -31,7 +31,7 @@ def run_only_annotate(arguments):
     )
 
     # get a subset of the training data that we will then annotate
-    dataset_train_subset = single_label_stratified_sample(dataset_train_unused, arguments.target_variable, 10000)
+    dataset_train_subset = single_label_stratified_sample(dataset_train_unused, arguments.target_variable, int(arguments.max_prompt_calls / len(unique_labels)))
     labels = dataset_train_subset["label"]
     logger.info("subset train label distribution: {}", Counter(labels))
     # save to disk for reproducibility
@@ -41,7 +41,6 @@ def run_only_annotate(arguments):
     # now remove the target column and replace it with placeholder values
     dataset_train_subset_nolabels = dataset_train_subset.remove_columns([arguments.target_variable])
     dataset_train_subset_nolabels = add_placeholder_labels(fewshot_examples, dataset_train_subset_nolabels, arguments)
-    # save to disk for reproducibility
     # save to disk for reproducibility
     filepath = DATASETPATH / f"{arguments.dataset}_trainsubset_labelsremoved_{len(dataset_train_subset_nolabels)}"
     dataset_train_subset_nolabels.save_to_disk(filepath)
