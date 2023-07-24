@@ -7,6 +7,8 @@ TODO: Implement mechanism: like num_examples == -1 -> infer labels and sample
 """
 import random
 from collections import defaultdict
+from collections import deque
+from itertools import cycle
 from typing import Dict, List, Set, Union, Tuple
 
 from datasets import ClassLabel, Dataset, Sequence, Value
@@ -17,6 +19,33 @@ from tqdm import tqdm
 def random_sampler(dataset: Dataset, num_examples: int) -> Dataset:
     """Random sampler"""
     return dataset.select(random.sample(range(len(dataset)), num_examples))
+
+
+def alternate_classes(dataset, column):
+    # Group the indices of each unique value in 'target' column
+    targets = defaultdict(deque)
+    for i, elem in enumerate(dataset[column]):
+        targets[elem].append(i)
+
+    # Create a cycle iterator from targets
+    targets_cycle = cycle(targets.keys())
+
+    # Alternate the occurrence of each class
+    alternate_indices = []
+    for target in targets_cycle:
+        if not targets[target]:  # If this class has no more indices, remove it from the cycle
+            del targets[target]
+        else:  # Otherwise, add the next index of this class to the list
+            alternate_indices.append(targets[target].popleft())
+
+        # If there are no more indices, break the loop
+        if not targets:
+            break
+
+    # Create new dataset from the alternate indices
+    alternate_dataset = dataset.select(alternate_indices)
+
+    return alternate_dataset
 
 
 def single_label_stratified_sample(dataset: Dataset, column: str, num_examples_per_class: int, return_unused_split: bool = False) -> Dataset:
@@ -42,10 +71,11 @@ def single_label_stratified_sample(dataset: Dataset, column: str, num_examples_p
 
     # Create new dataset from the sample
     sample_dataset = dataset.select(sample_indices)
+    sample_dataset = alternate_classes(sample_dataset, column)
 
     if return_unused_split:
         unused_indices = list(set(range(len(dataset))) - set(sample_indices))
-        return dataset.select(sample_indices), dataset.select(unused_indices)
+        return sample_dataset, dataset.select(unused_indices)
 
     return sample_dataset
 
