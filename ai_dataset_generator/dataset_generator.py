@@ -1,7 +1,6 @@
 import json
 import random
 import time
-
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Union, Tuple
@@ -258,7 +257,7 @@ class DatasetGenerator:
             return target_type(prediction)
         except ValueError:
             logger.warning(
-                "Could not convert prediction {} to type {target_type}. "
-                "Returning original prediction.", repr(prediction)
+                "Could not convert prediction {} to type {}. "
+                "Returning original prediction.", repr(prediction), target_type
             )
             return prediction
