@@ -31,7 +31,7 @@ def run_only_annotate(arguments):
     )
 
     # get a subset of the training data that we will then annotate
-    dataset_train_subset = single_label_stratified_sample(dataset_train_unused, arguments.target_variable, 10000)
+    dataset_train_subset = single_label_stratified_sample(dataset_train_unused, arguments.target_variable, int(arguments.max_prompt_calls / len(unique_labels)))
     labels = dataset_train_subset["label"]
     logger.info("subset train label distribution: {}", Counter(labels))
     # save to disk for reproducibility
