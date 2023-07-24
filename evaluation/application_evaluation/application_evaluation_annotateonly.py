@@ -42,7 +42,6 @@ def run_only_annotate(arguments):
     dataset_train_subset_nolabels = dataset_train_subset.remove_columns([arguments.target_variable])
     dataset_train_subset_nolabels = add_placeholder_labels(fewshot_examples, dataset_train_subset_nolabels, arguments)
     # save to disk for reproducibility
-    # save to disk for reproducibility
     filepath = DATASETPATH / f"{arguments.dataset}_trainsubset_labelsremoved_{len(dataset_train_subset_nolabels)}"
     dataset_train_subset_nolabels.save_to_disk(filepath)
 
