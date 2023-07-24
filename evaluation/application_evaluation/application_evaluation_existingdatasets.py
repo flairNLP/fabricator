@@ -36,7 +36,7 @@ def run(arguments):
     for current_size in (500, 1000, 2000, 5000, 10000):
         # get subset
         current_train_autolabeled = dataset_autolabeled.select(range(current_size))
-        current_train_gold = dataset_autolabeled.select(range(current_size))
+        current_train_gold = dataset_gold.select(range(current_size))
 
         # train and test
         ApplicationEvaluator(current_train_autolabeled, dataset_test, "autolabeled", arguments)
