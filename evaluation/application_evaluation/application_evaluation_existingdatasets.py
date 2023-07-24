@@ -8,11 +8,20 @@ def log_dataset_statistics(dataset):
     logger.info("dataset label distribution: {}", Counter(dataset["label"]))
 
 
+def replace_values(example):
+    if example["label"] == 3:
+        example["label"] = 0
+    elif example["label"] == 2:
+        example["label"] = 0
+    return example
+
+
 def run(arguments):
     path_autolabeled = DATASETPATH / "imdb_trainsubset_labelsremoved_autolabeled_10000"
     path_gold = DATASETPATH / "imdb_trainsubset_10000"
 
     dataset_autolabeled = Dataset.load_from_disk(path_autolabeled).shuffle()
+    dataset_autolabeled = dataset_autolabeled.map(replace_values)
     logger.info("autolabeled:")
     log_dataset_statistics(dataset_autolabeled)
 
