@@ -31,12 +31,13 @@ class TestPrompt(unittest.TestCase):
 
     def test_template_with_label_options(self):
         """Test prompt template with label options"""
+        label_options = ["positive", "negative"]
         prompt_template = BasePrompt(
-            task_description="Generate movie reviews that are either: {label_options}",
-            label_options=["positive", "negative"],
+            task_description="Generate a {} movie review.",
+            label_options=label_options,
         )
-        self.assertIn("positive", prompt_template.get_prompt_text())
-        self.assertIn("negative", prompt_template.get_prompt_text())
+        self.assertIn("positive", prompt_template.get_prompt_text(label_options[0]))
+        self.assertIn("negative", prompt_template.get_prompt_text(label_options[1]))
         self.assertEqual(prompt_template.target_formatting_template, "text: ")
 
     def test_initialization_only_target_column(self):
@@ -53,7 +54,7 @@ class TestPrompt(unittest.TestCase):
         prompt_text = 'Generate similar movie reviews.\n\ntext: This movie is great!\n\ntext: ' \
                       'This movie is bad!\n\ntext: '
 
-        self.assertEqual(prompt_template.get_prompt_text(self.dataset), prompt_text)
+        self.assertEqual(prompt_template.get_prompt_text(None, self.dataset), prompt_text)
 
     def test_initialization_target_and_fewshot_columns(self):
         """Test initialization with target and fewshot columns"""
@@ -70,7 +71,7 @@ class TestPrompt(unittest.TestCase):
         prompt_text = 'Generate movie reviews.\n\ntext: This movie is great!\nlabel: positive\n\n' \
                       'text: This movie is bad!\nlabel: negative\n\ntext: {text}\nlabel: '
 
-        self.assertEqual(prompt_template.get_prompt_text(self.dataset), prompt_text)
+        self.assertEqual(prompt_template.get_prompt_text(None, self.dataset), prompt_text)
 
     def test_initialization_with_multiple_fewshot_columns(self):
         """Test initialization with multiple fewshot columns"""
@@ -111,41 +112,41 @@ class TestDownstreamTasks(unittest.TestCase):
             fewshot_example_columns="german",
         )
 
-        raw_prompt = prompt.get_prompt_text(self.translation)
+        raw_prompt = prompt.get_prompt_text(None, self.translation)
         self.assertIn("Marktorganisation für Wein(1)", raw_prompt)
         self.assertIn("Gelet op Verordening (EG) nr. 1493/1999", raw_prompt)
         self.assertIn("na z'n partijtje golf", raw_prompt)
         self.assertIn("dutch: ", raw_prompt)
 
     def test_text_classification(self):
-        id2label = dict(enumerate(self.text_classification.features["coarse_label"].names))
+        label_options = self.text_classification.features["coarse_label"].names
 
         prompt = BasePrompt(
-            task_description="Classify the question into one of the following categories: {label_options}",
+            task_description="Classify the question into one of the following categories: {}",
+            label_options=label_options,
             generate_data_for_column="coarse_label",
             fewshot_example_columns="text",
-            label_options=id2label,
         )
-        self.assertIn(", ".join([f"{k}: {v}" for k, v in id2label.items()]), prompt.task_description)
 
-        raw_prompt = prompt.get_prompt_text(self.text_classification)
+        raw_prompt = prompt.get_prompt_text(label_options, self.text_classification)
+        self.assertIn(", ".join(label_options), raw_prompt)
         self.assertIn("What fowl grabs the spotlight after the Chinese Year of the Monkey ?", raw_prompt)
         self.assertIn("How can I find a list of celebrities ' real names ?", raw_prompt)
         self.assertIn("What films featured the character Popeye Doyle ?", raw_prompt)
         self.assertIn("coarse_label: 2", raw_prompt)
 
     def test_named_entity_recognition(self):
-        id2label = dict(enumerate(self.ner.features["ner_tags"].feature.names))
+        label_options = self.ner.features["ner_tags"].feature.names
 
         prompt = BasePrompt(
-            task_description="Classify each token into one of the following categories: {label_options}",
+            task_description="Classify each token into one of the following categories: {}",
             generate_data_for_column="ner_tags",
             fewshot_example_columns="tokens",
-            label_options=id2label,
+            label_options=label_options,
         )
-        self.assertIn(", ".join([f"{k}: {v}" for k, v in id2label.items()]), prompt.task_description)
 
-        raw_prompt = prompt.get_prompt_text(self.ner)
+        raw_prompt = prompt.get_prompt_text(label_options, self.ner)
+        self.assertIn(", ".join(label_options), raw_prompt)
         self.assertIn("'BRUSSELS', '1996-08-22'", raw_prompt)
         self.assertIn("'Peter', 'Blackburn'", raw_prompt)
         self.assertIn("3, 4, 0, 0, 0, 0, 0, 0, 7, 0", raw_prompt)
@@ -158,7 +159,7 @@ class TestDownstreamTasks(unittest.TestCase):
             fewshot_example_columns=["context", "question"],
         )
 
-        raw_prompt = prompt.get_prompt_text(self.question_answering)
+        raw_prompt = prompt.get_prompt_text(None, self.question_answering)
         self.assertIn("answer: the Main Building", raw_prompt)
         self.assertIn("context: Architecturally, the school", raw_prompt)
         self.assertIn("question: The Basilica", raw_prompt)
