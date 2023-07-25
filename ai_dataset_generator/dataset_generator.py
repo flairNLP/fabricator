@@ -127,10 +127,14 @@ class DatasetGenerator:
 
         # Haystack internally uses timeouts and retries, so we dont have to do it
         # We dont catch authentification errors here, because we want to fail fast
-        prediction = self.prompt_node.run(
-            prompt_template=HaystackPromptTemplate(prompt=prompt_text),
-            invocation_context=invocation_context,
-        )[0]["results"]
+        try:
+            prediction = self.prompt_node.run(
+                prompt_template=HaystackPromptTemplate(prompt=prompt_text),
+                invocation_context=invocation_context,
+            )[0]["results"]
+        except Exception as error:
+            logger.error(f"Error while generating example: {error}")
+            return None
 
         return prediction
 
