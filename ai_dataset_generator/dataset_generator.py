@@ -1,9 +1,9 @@
 import json
 import time
+
 from pathlib import Path
 from collections import defaultdict
 from typing import Any, Dict, Optional, Union, Tuple, List
-
 from tqdm import tqdm
 from loguru import logger
 
@@ -271,8 +271,8 @@ class DatasetGenerator:
             return target_type(prediction)
         except ValueError:
             logger.warning(
-                "Could not convert prediction {} to type {target_type}. "
-                "Returning original prediction.", repr(prediction)
+                "Could not convert prediction {} to type {}. "
+                "Returning original prediction.", repr(prediction), target_type
             )
             return prediction
 

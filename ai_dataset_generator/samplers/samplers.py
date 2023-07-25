@@ -74,6 +74,10 @@ def single_label_task_sampler(dataset: Dataset, label_column: str, num_examples:
             total_examples_sampled += 1
             pbar.update(1)
 
+    if return_unused_split:
+        unused_indices = list(set(range(len(dataset))) - set(sampled_indices))
+        return dataset.select(sampled_indices), dataset.select(unused_indices)
+
     return dataset.select(sampled_indices)
 
 
