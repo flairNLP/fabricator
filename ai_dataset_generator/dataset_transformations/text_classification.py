@@ -88,7 +88,7 @@ def convert_label_ids_to_texts(
         id2label = replace_class_labels(id2label, expanded_label_mapping)
 
     new_label_column = f"{label_column}_natural_language"
-    label_options = list(set(id2label.values()))
+    label_options = list(id2label.values())
 
     def labels_to_natural_language(examples):
         examples[new_label_column] = id2label[examples[label_column]]

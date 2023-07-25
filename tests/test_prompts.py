@@ -175,7 +175,7 @@ class TestAutoInference(unittest.TestCase):
         prompt = infer_prompt_from_task_template(task_template)
         self.assertIsInstance(prompt, BasePrompt)
         self.assertEqual(prompt.fewshot_example_columns, ["context", "question"])
-        self.assertEqual(prompt.generate_data_for_column, ["answer"])
+        self.assertEqual(prompt.generate_data_for_column, ["answers"])
 
     def test_auto_infer_class_label_prompt(self):
         """Test auto inference of TextClassification task template"""
