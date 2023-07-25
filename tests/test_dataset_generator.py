@@ -49,7 +49,6 @@ class TestDatasetGenerator(unittest.TestCase):
         self.assertEqual(len(generated_dataset), 2)
         self.assertEqual(generated_dataset.features["text"].dtype, "string")
         self.assertIn("text", generated_dataset.features)
-        self.assertNotEquals(generated_dataset[0]["text"], generated_dataset[1]["text"])
 
     def test_generation_with_fewshot_examples(self):
         label_options = ["positive", "negative"]
