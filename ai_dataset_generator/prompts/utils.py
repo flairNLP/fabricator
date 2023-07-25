@@ -6,13 +6,20 @@ DEFAULT_TEXT_CLASSIFICATION = "Classify the following texts exactly into one of 
 DEFAULT_QA = "Given a context and a question, generate an answer that occurs exactly and only once in the text."
 
 
-def infer_prompt_from_task_template(task_template: TaskTemplate):
-    """Infer TextLabelPrompt or ClassLabelPrompt with correct parameters from a task template's metadata."""
+def infer_prompt_from_task_template(task_template: TaskTemplate) -> BasePrompt:
+    """Infer TextLabelPrompt or ClassLabelPrompt with correct parameters from a task template's metadata.
+
+    Args:
+        task_template (TaskTemplate): task template from which to infer the prompt.
+
+    Returns:
+        BasePrompt: with correct parameters.
+    """
     if isinstance(task_template, QuestionAnsweringExtractive):
         return BasePrompt(
             task_description=DEFAULT_QA,
-            generate_data_for_column="answer",  # assuming the dataset was preprocessed with preprocess_squad_format
-            # otherwise dataset.task_templates[0]["answers_column"]
+            generate_data_for_column=task_template.answers_column,  # assuming the dataset was preprocessed
+            # with preprocess_squad_format, otherwise dataset.task_templates[0]["answers_column"]
             fewshot_example_columns=[task_template.context_column, task_template.question_column],
         )
 

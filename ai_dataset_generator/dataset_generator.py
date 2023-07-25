@@ -162,6 +162,7 @@ class DatasetGenerator:
             enumerate(api_calls, start=1), desc="Generating dataset", total=len(api_calls)
         ):
             fewshot_examples = None
+            unlabeled_example = None
             invocation_context = None
             prompt_labels = None
 
@@ -199,7 +200,7 @@ class DatasetGenerator:
 
             # If we have a target variable, we re-use the relevant columns of the input example
             # and add the prediction to the generated dataset
-            if prompt_template.generate_data_for_column:
+            if prompt_template.generate_data_for_column and unlabeled_example:
                 generated_sample = prompt_template.filter_example_by_columns(
                     unlabeled_example, prompt_template.fewshot_example_columns
                 )
@@ -298,7 +299,7 @@ class DatasetGenerator:
             )
 
         else:
-            prompt_labels = None
+            prompt_labels = prompt_template.label_options if prompt_template.label_options else None
             fewshot_examples = fewshot_dataset.shuffle().select(range(fewshot_examples_per_class))
 
         assert len(fewshot_examples) > 0, f"Could not find any fewshot examples for label(s) {prompt_labels}." \
