@@ -5,15 +5,20 @@ from tqdm import tqdm
 
 from evaluation.application_evaluation.application_evaluation import DATASETPATH
 from evaluation.application_evaluation.application_evaluation_existingdatasets import \
-    replace_values
+    log_dataset_statistics, replace_values
 
 
 def run():
     logger.info("Loading datasets")
     dataset_gold = load_from_disk(DATASETPATH / "imdb_trainsubset_10000")
-    dataset_autolabeled = load_from_disk(DATASETPATH / "imdb_trainsubset_labelsremoved_autolabeled_10000").map(
-        replace_values
-    )
+    dataset_autolabeled = load_from_disk(DATASETPATH / "imdb_trainsubset_labelsremoved_autolabeled_10000")
+    logger.info("autolabeled:")
+    log_dataset_statistics(dataset_autolabeled)
+    dataset_autolabeled = dataset_autolabeled.map(replace_values, load_from_cache_file=False)
+    logger.info("autolabeled:")
+    log_dataset_statistics(dataset_autolabeled)
+    logger.info("gold:")
+    log_dataset_statistics(dataset_gold)
 
     logger.info("extracting target column")
     texts1 = list(dataset_gold["text"])

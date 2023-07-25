@@ -6,13 +6,18 @@ from evaluation.application_evaluation.application_evaluation import *
 def log_dataset_statistics(dataset):
     logger.info("dataset size: {}", len(dataset))
     logger.info("dataset label distribution: {}", Counter(dataset["label"]))
+    logger.debug(dataset["label"])
 
 
 def replace_values(example):
-    if example["label"] == 3:
-        example["label"] = 0
-    elif example["label"] == 2:
-        example["label"] = 0
+    label = example["label"]
+    if label == 1:
+        label = 0
+    elif label == 2:
+         label = 0
+    elif label == 3:
+        label = 1
+    example["label"] = label
     return example
 
 
