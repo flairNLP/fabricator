@@ -20,13 +20,16 @@ def random_sampler(dataset: Dataset, num_examples: int) -> Dataset:
     return dataset.select(random.sample(range(len(dataset)), num_examples))
 
 
-def single_label_task_sampler(dataset: Dataset, label_column: str, num_examples: int) -> Dataset:
+def single_label_task_sampler(
+        dataset: Dataset, label_column: str, num_examples: int, return_unused_split: bool = False
+) -> Dataset:
     """Sampler for single label tasks, like text classification
 
     Args:
         dataset: Dataset
         label_column: Name of the label column
         num_examples: Number of examples to sample
+        return_unused_split: Whether to return the unused split
 
     Approach:
         num_examples > len(dataset): Samples all examples

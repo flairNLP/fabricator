@@ -84,6 +84,30 @@ class TestPrompt(unittest.TestCase):
         self.assertEqual(type(text_label_prompt.fewshot_example_columns), list)
         self.assertEqual(len(text_label_prompt.fewshot_example_columns), 2)
 
+    def test_custom_formatting_template(self):
+        label_options = ["positive", "negative"]
+
+        fewshot_examples = Dataset.from_dict({
+            "text": ["This movie is great!", "This movie is bad!"],
+            "label": label_options
+        })
+
+        prompt = BasePrompt(
+            task_description="Annotate the sentiment of the following movie review whether it is: {}.",
+            generate_data_for_column="label",
+            fewshot_example_columns="text",
+            fewshot_formatting_template="Movie Review: {text}\nSentiment: {label}",
+            target_formatting_template="Movie Review: {text}\nSentiment: ",
+            label_options=label_options,
+        )
+
+        prompt_text = prompt.get_prompt_text(label_options, fewshot_examples)
+
+        self.assertIn("whether it is: positive, negative.", prompt_text)
+        self.assertIn("Movie Review: This movie is great!\nSentiment: positive", prompt_text)
+        self.assertIn("Movie Review: This movie is bad!\nSentiment: negative", prompt_text)
+        self.assertIn("Movie Review: {text}\nSentiment: ", prompt.target_formatting_template)
+
 
 class TestDownstreamTasks(unittest.TestCase):
     """Testcase for downstream tasks"""
