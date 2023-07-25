@@ -1,5 +1,48 @@
 # Tutorial 2: Generate advanced datasets
 
+## Customize prompts
+
+Sometimes, you want to customize your prompt to your specific needs. For example, you might want to add a custom 
+formatting template (the default takes the column names of the dataset):
+
+```python
+from datasets import Dataset
+from ai_dataset_generator.prompts import BasePrompt
+
+label_options = ["positive", "negative"]
+
+fewshot_examples = Dataset.from_dict({
+    "text": ["This movie is great!", "This movie is bad!"],
+    "label": label_options
+})
+
+prompt = BasePrompt(
+    task_description="Annotate the sentiment of the following movie review whether it is: {}.",
+    generate_data_for_column="label",
+    fewshot_example_columns="text",
+    fewshot_formatting_template="Movie Review: {text}\nSentiment: {label}",
+    target_formatting_template="Movie Review: {text}\nSentiment: ",
+    label_options=label_options,
+)
+
+print(prompt.get_prompt_text(label_options, fewshot_examples))
+```
+
+which yields:
+
+```text
+Annotate the sentiment of the following movie review whether it is: positive, negative.
+
+Movie Review: This movie is great!
+Sentiment: positive
+
+Movie Review: This movie is bad!
+Sentiment: negative
+
+Movie Review: {text}
+Sentiment: 
+```
+
 ## Infer prompt from dataset
 
 Huggingface Dataset objects provide the possibility to infer a prompt from the dataset. This can be achieved by using
