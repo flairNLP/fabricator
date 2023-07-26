@@ -162,7 +162,7 @@ class DatasetGenerator:
         original_dataset = defaultdict(list)
 
         if unlabeled_dataset:
-            api_calls = range(min(max_prompt_calls, num_samples_to_generate, len(unlabeled_dataset)))
+            api_calls = range(min(max_prompt_calls, len(unlabeled_dataset)))
         else:
             api_calls = range(min(max_prompt_calls, num_samples_to_generate))
 
