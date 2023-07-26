@@ -7,7 +7,7 @@ formatting template (the default takes the column names of the dataset):
 
 ```python
 from datasets import Dataset
-from src.ai_dataset_generator.prompts import BasePrompt
+from ai_dataset_generator.prompts import BasePrompt
 
 label_options = ["positive", "negative"]
 
@@ -53,7 +53,7 @@ assignment is that data is going to be generated for the label column specified 
 
 ```python
 from datasets import load_dataset
-from src.ai_dataset_generator.prompts import infer_prompt_from_dataset
+from ai_dataset_generator.prompts import infer_prompt_from_dataset
 
 dataset = load_dataset("imdb", split="train")
 prompt = infer_prompt_from_dataset(dataset)
@@ -88,7 +88,7 @@ extractive question answering:
 
 ```python
 from datasets import load_dataset
-from src.ai_dataset_generator.prompts import infer_prompt_from_dataset
+from ai_dataset_generator.prompts import infer_prompt_from_dataset
 
 dataset = load_dataset("imdb", split="train")
 prompt = infer_prompt_from_dataset(dataset)
@@ -155,8 +155,8 @@ uses the label names specified in the dataset.
 
 ```python
 from datasets import load_dataset
-from src.ai_dataset_generator.prompts import infer_prompt_from_dataset
-from src.ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
+from ai_dataset_generator.prompts import infer_prompt_from_dataset
+from ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
 
 dataset = load_dataset("imdb", split="train")
 prompt = infer_prompt_from_dataset(dataset)
@@ -235,8 +235,8 @@ start and log if this answer can't be found in the context or if the answer occu
 
 ```python
 from datasets import load_dataset
-from src.ai_dataset_generator.prompts import infer_prompt_from_dataset
-from src.ai_dataset_generator.dataset_transformations.question_answering import preprocess_squad_format,
+from ai_dataset_generator.prompts import infer_prompt_from_dataset
+from ai_dataset_generator.dataset_transformations.question_answering import preprocess_squad_format,
     postprocess_squad_format
 
 dataset = load_dataset("squad_v2", split="train")
@@ -273,7 +273,7 @@ to understand for the LLM.
 
 ```python
 from datasets import load_dataset
-from src.ai_dataset_generator.prompts import BasePrompt
+from ai_dataset_generator.prompts import BasePrompt
 
 dataset = load_dataset("conll2003", split="train")
 prompt = BasePrompt(
@@ -303,8 +303,8 @@ This can be done by using the `convert_token_labels_to_spans` function. The func
 
 ```python
 from datasets import load_dataset
-from src.ai_dataset_generator.prompts import BasePrompt
-from src.ai_dataset_generator.dataset_transformations import convert_token_labels_to_spans
+from ai_dataset_generator.prompts import BasePrompt
+from ai_dataset_generator.dataset_transformations import convert_token_labels_to_spans
 
 dataset = load_dataset("conll2003", split="train")
 dataset, label_options = convert_token_labels_to_spans(dataset, "tokens", "ner_tags")
@@ -371,7 +371,7 @@ ignored. Note: this takes rather long is currently build on spacy. We are workin
 contributions.
 
 ```python
-from src.ai_dataset_generator.dataset_transformations import convert_spans_to_token_labels
+from ai_dataset_generator.dataset_transformations import convert_spans_to_token_labels
 
 dataset = convert_spans_to_token_labels(
     dataset=dataset.select(range(20)),
@@ -400,8 +400,8 @@ yourself.
 import os
 from datasets import Dataset
 from haystack.nodes import PromptNode
-from src.ai_dataset_generator import DatasetGenerator
-from src.ai_dataset_generator.prompts import BasePrompt
+from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator.prompts import BasePrompt
 
 fewshot_dataset = Dataset.from_dict({
     "german": ["Der Film ist großartig!", "Der Film ist schlecht!"],
@@ -445,9 +445,9 @@ generated_dataset.push_to_hub("your-first-generated-dataset")
 import os
 from datasets import load_dataset
 from haystack.nodes import PromptNode
-from src.ai_dataset_generator import DatasetGenerator
-from src.ai_dataset_generator.prompts import BasePrompt
-from src.ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
+from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator.prompts import BasePrompt
+from ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
 
 dataset = load_dataset("glue", "mrpc", split="train")
 dataset, label_options = convert_label_ids_to_texts(dataset, "label", return_label_options=True)  # convert the
@@ -494,9 +494,9 @@ first sentence and a label like:
 import os
 from datasets import load_dataset
 from haystack.nodes import PromptNode
-from src.ai_dataset_generator import DatasetGenerator
-from src.ai_dataset_generator.prompts import BasePrompt
-from src.ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
+from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator.prompts import BasePrompt
+from ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
 
 dataset = load_dataset("glue", "mrpc", split="train")
 dataset, label_options = convert_label_ids_to_texts(dataset, "label", return_label_options=True)  # convert the
@@ -544,9 +544,9 @@ conversion between spans and token labels welcomes contributions for a more stab
 import os
 from datasets import load_dataset
 from haystack.nodes import PromptNode
-from src.ai_dataset_generator import DatasetGenerator
-from src.ai_dataset_generator.prompts import BasePrompt
-from src.ai_dataset_generator.dataset_transformations import convert_token_labels_to_spans,
+from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator.prompts import BasePrompt
+from ai_dataset_generator.dataset_transformations import convert_token_labels_to_spans,
     convert_spans_to_token_labels
 
 dataset = load_dataset("conll2003", split="train")

@@ -9,8 +9,8 @@ to the HuggingFace Hub.
 ```python
 import os
 from haystack.nodes import PromptNode
-from src.ai_dataset_generator import DatasetGenerator
-from src.ai_dataset_generator.prompts import BasePrompt
+from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator.prompts import BasePrompt
 
 prompt = BasePrompt(
     task_description="Generate a very very short movie review.",
@@ -39,8 +39,8 @@ this can be achieved by providing a `label_options` argument to the `BasePrompt`
 ```python
 import os
 from haystack.nodes import PromptNode
-from src.ai_dataset_generator import DatasetGenerator
-from src.ai_dataset_generator.prompts import BasePrompt
+from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator.prompts import BasePrompt
 
 label_options = ["positive", "negative"]
 
@@ -87,8 +87,8 @@ sampling. In this case, we use the `label` column.
 import os
 from datasets import Dataset
 from haystack.nodes import PromptNode
-from src.ai_dataset_generator import DatasetGenerator
-from src.ai_dataset_generator.prompts import BasePrompt
+from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator.prompts import BasePrompt
 
 label_options = ["positive", "negative"]
 
@@ -138,8 +138,8 @@ argument since the generator will use the column specified in `generate_data_for
 import os
 from datasets import Dataset
 from haystack.nodes import PromptNode
-from src.ai_dataset_generator import DatasetGenerator
-from src.ai_dataset_generator.prompts import BasePrompt
+from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator.prompts import BasePrompt
 
 label_options = ["positive", "negative"]
 
