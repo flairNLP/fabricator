@@ -16,7 +16,7 @@ class TestTransformationsTextClassification(unittest.TestCase):
 
     def test_label_ids_to_textual_label(self):
         """Test transformation output only"""
-        dataset, label_options = convert_label_ids_to_texts(self.dataset, "coarse_label")
+        dataset, label_options = convert_label_ids_to_texts(self.dataset, "coarse_label", return_label_options=True)
         self.assertEqual(len(label_options), 6)
         self.assertEqual(set(label_options), set(self.dataset.features["coarse_label"].names))
         self.assertEqual(type(dataset[0]["coarse_label"]), str)
