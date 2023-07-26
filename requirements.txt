@@ -3,10 +3,3 @@ langchain
 farm-haystack>=1.18.0
 spacy
 loguru
-
-# requirements of the evaluation part (may be moved into another repo in the future)
-torch
-transformers[torch]
-evaluate
-pandas
-openpyxl

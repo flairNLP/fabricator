@@ -8,7 +8,7 @@
 <div align="center">
 <hr>
 
-[Installation](#installation) - [Basic Concepts](#basic-concepts) - [Tutorials](tutorials/TUTORIAL-1_OVERVIEW.md) - 
+[Installation](#installation) - [Basic Concepts](#basic-concepts) - [Examples](#examples) - [Tutorials](tutorials/TUTORIAL-1_OVERVIEW.md) - 
 Paper - [Citation](#citation)
 
 <hr>
@@ -18,7 +18,7 @@ Paper - [Citation](#citation)
 
 This repository:
 
-- is <b>a easy-to-use open-source framework</b> to generate datasets with large language models. If you want to train
+- is <b>a easy-to-use open-source library</b> to generate datasets with large language models. If you want to train
 a model on a specific domain / label distribution / downstream task, you can use this framework to generate
 a dataset for it.
 - <b>builds on top of deepset's haystack and huggingface's datasets</b> libraries. Thus, we support a wide range 
@@ -30,11 +30,11 @@ prompt customization, integration and sampling of fewshot examples or annotation
 ## Installation
 Using conda:
 ```
-git clone git@github.com:whoisjones/ai-dataset-generator.git
+git clone git@github.com:flairNLP/ai-dataset-generator.git
 cd ai-dataset-generator
 conda create -y -n aidatasetgenerator python=3.10
 conda activate aidatasetgenerator
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Basic Concepts
@@ -53,6 +53,41 @@ in a specific way.
 supports a wide range of LLMs including OpenAI, all models from the HuggingFace model hub and many more.
 - <b>Generator</b>: The generator is the core of this framework. It takes a dataset, a prompt and a LLM and generates a
 dataset based on your specifications.
+
+## Examples
+
+With our library, you can generate datasets for any task you want. You can start as simple
+as that:
+
+### Generate a dataset from scratch
+
+```python
+import os
+from haystack.nodes import PromptNode
+from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator.prompts import BasePrompt
+
+prompt = BasePrompt(
+    task_description="Generate a short movie review.",
+)
+
+prompt_node = PromptNode(
+    model_name_or_path="gpt-3.5-turbo",
+    api_key=os.environ.get("OPENAI_API_KEY"),
+    max_length=100,
+)
+
+generator = DatasetGenerator(prompt_node)
+generated_dataset = generator.generate(
+    prompt_template=prompt,
+    max_prompt_calls=10,
+)
+
+generated_dataset.push_to_hub("your-first-generated-dataset")
+```
+
+In our tutorial, we introduce how to create classification datasets with label options to choose from, how to include 
+fewshot examples or how to annotate unlabeled data into predefined categories.
 
 ## Citation
 
