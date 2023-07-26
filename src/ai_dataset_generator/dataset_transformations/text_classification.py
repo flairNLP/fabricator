@@ -64,7 +64,7 @@ def convert_label_ids_to_texts(
     dataset: Union[Dataset, DatasetDict],
     label_column: str,
     expanded_label_mapping: Dict = None,
-    return_label_options: bool = True,
+    return_label_options: bool = False,
 ) -> Union[Dataset, DatasetDict, Tuple[Union[Dataset, DatasetDict], List[str]]]:
     """Converts label IDs to natural language labels for any classification problem with a single label such as text
     classification. Note that if the function is not applied to a Dataset, the label column will contain the IDs.
