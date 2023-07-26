@@ -233,7 +233,9 @@ class DatasetGenerator:
                 generated_dataset[prompt_template.generate_data_for_column[0]].append(prediction)
 
             else:
-                generated_dataset[prompt_template.DEFAULT_COLUMN[0]].append(prediction)
+                generated_dataset[prompt_template.DEFAULT_TEXT_COLUMN[0]].append(prediction)
+                if prompt_labels and isinstance(prompt_labels, str):
+                    generated_dataset[prompt_template.DEFAULT_LABEL_COLUMN[0]].append(prompt_labels)
 
             log_entry = {
                 "prompt": prompt_text,
@@ -241,7 +243,7 @@ class DatasetGenerator:
                 "prediction": prediction,
                 "target": prompt_template.generate_data_for_column[0]
                 if prompt_template.generate_data_for_column
-                else prompt_template.DEFAULT_COLUMN[0],
+                else prompt_template.DEFAULT_TEXT_COLUMN[0],
             }
             with open(current_log_file, "a", encoding="utf-8") as log_file:
                 log_file.write(f"{json.dumps(log_entry)}\n")

@@ -9,7 +9,8 @@ class BasePrompt:
     """Base class for prompt generation. This class formats the prompt for the fewshot / support set examples
     and the target variable such that the dataset generator can simply put in the invocation context."""
 
-    DEFAULT_COLUMN = ["text"]
+    DEFAULT_TEXT_COLUMN = ["text"]
+    DEFAULT_LABEL_COLUMN = ["label"]
 
     def __init__(
         self,
@@ -116,7 +117,7 @@ class BasePrompt:
             target_template = f"{self.generate_data_for_column[0]}: "
 
         elif not self.generate_data_for_column and not self.fewshot_example_columns:
-            target_template = f"{self.DEFAULT_COLUMN[0]}: "
+            target_template = f"{self.DEFAULT_TEXT_COLUMN[0]}: "
 
         else:
             raise ValueError("Either generate_data_for_column or generate_data_for_column + fewshot_example_columns "
