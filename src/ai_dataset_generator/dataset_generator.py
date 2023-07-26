@@ -60,6 +60,7 @@ class DatasetGenerator:
         max_prompt_calls: int = 10,
         num_samples_to_generate: int = 10,
         timeout_per_prompt: Optional[int] = None,
+        log_every_n_api_calls: int = 25,
     ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
         """Generate a dataset based on a prompt template and support examples.
         Optionally, unlabeled examples can be provided to annotate unlabeled data.
@@ -79,6 +80,7 @@ class DatasetGenerator:
             max_prompt_calls (int, optional): Maximum number of prompt calls. Defaults to 10.
             num_samples_to_generate (int, optional): Number of samples to generate. Defaults to 10.
             timeout_per_prompt (Optional[int], optional): Timeout per prompt call. Defaults to None.
+            log_every_n_api_calls (int, optional): Log every n api calls. Defaults to 25.
 
         Returns:
             Union[Dataset, Tuple[Dataset, Dataset]]: Generated dataset or tuple of generated dataset and original
@@ -103,7 +105,8 @@ class DatasetGenerator:
             return_unlabeled_dataset,
             max_prompt_calls,
             num_samples_to_generate,
-            timeout_per_prompt
+            timeout_per_prompt,
+            log_every_n_api_calls,
         )
 
         if return_unlabeled_dataset:
@@ -150,6 +153,7 @@ class DatasetGenerator:
         max_prompt_calls: int,
         num_samples_to_generate: int,
         timeout_per_prompt: Optional[int],
+        log_every_n_api_calls: int = 25,
     ):
         current_tries_left = self._max_tries
         current_log_file = self._setup_log(prompt_template)
@@ -186,6 +190,14 @@ class DatasetGenerator:
                 invocation_context = prompt_template.filter_example_by_columns(
                     unlabeled_example, prompt_template.fewshot_example_columns
                 )
+
+            if log_every_n_api_calls > 0:
+                if prompt_call_idx % log_every_n_api_calls == 0:
+                    logger.info(
+                        f"Current prompt call: {prompt_call_idx}: \n"
+                        f"Prompt: {prompt_text} \n"
+                        f"Invocation context: {invocation_context} \n"
+                    )
 
             prediction = self._try_generate(prompt_text, invocation_context)
 
