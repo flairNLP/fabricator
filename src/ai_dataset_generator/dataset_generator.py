@@ -12,9 +12,9 @@ from numpy.random import choice
 from haystack.nodes import PromptNode
 from haystack.nodes import PromptTemplate as HaystackPromptTemplate
 
-from ai_dataset_generator.prompts.base import BasePrompt
-from ai_dataset_generator.samplers import single_label_stratified_sample
-from ai_dataset_generator.utils import log_dir, create_timestamp_path
+from .prompts import BasePrompt
+from .samplers import single_label_stratified_sample
+from .utils import log_dir, create_timestamp_path
 
 
 class DatasetGenerator:
