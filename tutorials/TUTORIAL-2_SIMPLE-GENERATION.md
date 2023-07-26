@@ -9,8 +9,8 @@ to the HuggingFace Hub.
 ```python
 import os
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
+from src.ai_dataset_generator import DatasetGenerator
+from src.ai_dataset_generator.prompts import BasePrompt
 
 prompt = BasePrompt(
     task_description="Generate a very very short movie review.",
@@ -39,8 +39,8 @@ this can be achieved by providing a `label_options` argument to the `BasePrompt`
 ```python
 import os
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
+from src.ai_dataset_generator import DatasetGenerator
+from src.ai_dataset_generator.prompts import BasePrompt
 
 label_options = ["positive", "negative"]
 
@@ -49,7 +49,7 @@ prompt = BasePrompt(
     label_options=label_options,
 )
 
-prompt_node = PromptNode(   
+prompt_node = PromptNode(
     model_name_or_path="gpt-3.5-turbo",
     api_key=os.environ.get("OPENAI_API_KEY"),
     max_length=100,
@@ -87,8 +87,8 @@ sampling. In this case, we use the `label` column.
 import os
 from datasets import Dataset
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
+from src.ai_dataset_generator import DatasetGenerator
+from src.ai_dataset_generator.prompts import BasePrompt
 
 label_options = ["positive", "negative"]
 
@@ -103,7 +103,7 @@ prompt = BasePrompt(
     generate_data_for_column="text",
 )
 
-prompt_node = PromptNode(   
+prompt_node = PromptNode(
     model_name_or_path="gpt-3.5-turbo",
     api_key=os.environ.get("OPENAI_API_KEY"),
     max_length=100,
@@ -138,8 +138,8 @@ argument since the generator will use the column specified in `generate_data_for
 import os
 from datasets import Dataset
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
+from src.ai_dataset_generator import DatasetGenerator
+from src.ai_dataset_generator.prompts import BasePrompt
 
 label_options = ["positive", "negative"]
 

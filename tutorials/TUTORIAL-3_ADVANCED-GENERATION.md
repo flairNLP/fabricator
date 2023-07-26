@@ -7,7 +7,7 @@ formatting template (the default takes the column names of the dataset):
 
 ```python
 from datasets import Dataset
-from ai_dataset_generator.prompts import BasePrompt
+from src.ai_dataset_generator.prompts import BasePrompt
 
 label_options = ["positive", "negative"]
 
@@ -53,7 +53,7 @@ assignment is that data is going to be generated for the label column specified 
 
 ```python
 from datasets import load_dataset
-from ai_dataset_generator.prompts import infer_prompt_from_dataset
+from src.ai_dataset_generator.prompts import infer_prompt_from_dataset
 
 dataset = load_dataset("imdb", split="train")
 prompt = infer_prompt_from_dataset(dataset)
@@ -88,7 +88,7 @@ extractive question answering:
 
 ```python
 from datasets import load_dataset
-from ai_dataset_generator.prompts import infer_prompt_from_dataset
+from src.ai_dataset_generator.prompts import infer_prompt_from_dataset
 
 dataset = load_dataset("imdb", split="train")
 prompt = infer_prompt_from_dataset(dataset)
@@ -155,13 +155,13 @@ uses the label names specified in the dataset.
 
 ```python
 from datasets import load_dataset
-from ai_dataset_generator.prompts import infer_prompt_from_dataset
-from ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
+from src.ai_dataset_generator.prompts import infer_prompt_from_dataset
+from src.ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
 
 dataset = load_dataset("imdb", split="train")
 prompt = infer_prompt_from_dataset(dataset)
 dataset, label_options = convert_label_ids_to_texts(
-    dataset=dataset, 
+    dataset=dataset,
     label_column="label",
     return_label_options=True
 )
@@ -235,8 +235,8 @@ start and log if this answer can't be found in the context or if the answer occu
 
 ```python
 from datasets import load_dataset
-from ai_dataset_generator.prompts import infer_prompt_from_dataset
-from ai_dataset_generator.dataset_transformations.question_answering import preprocess_squad_format, \
+from src.ai_dataset_generator.prompts import infer_prompt_from_dataset
+from src.ai_dataset_generator.dataset_transformations.question_answering import preprocess_squad_format,
     postprocess_squad_format
 
 dataset = load_dataset("squad_v2", split="train")
@@ -273,7 +273,7 @@ to understand for the LLM.
 
 ```python
 from datasets import load_dataset
-from ai_dataset_generator.prompts import BasePrompt
+from src.ai_dataset_generator.prompts import BasePrompt
 
 dataset = load_dataset("conll2003", split="train")
 prompt = BasePrompt(
@@ -303,8 +303,8 @@ This can be done by using the `convert_token_labels_to_spans` function. The func
 
 ```python
 from datasets import load_dataset
-from ai_dataset_generator.prompts import BasePrompt
-from ai_dataset_generator.dataset_transformations.token_classification import convert_token_labels_to_spans
+from src.ai_dataset_generator.prompts import BasePrompt
+from src.ai_dataset_generator.dataset_transformations import convert_token_labels_to_spans
 
 dataset = load_dataset("conll2003", split="train")
 dataset, label_options = convert_token_labels_to_spans(dataset, "tokens", "ner_tags")
@@ -371,7 +371,8 @@ ignored. Note: this takes rather long is currently build on spacy. We are workin
 contributions.
 
 ```python
-from ai_dataset_generator.dataset_transformations.token_classification import convert_spans_to_token_labels
+from src.ai_dataset_generator.dataset_transformations import convert_spans_to_token_labels
+
 dataset = convert_spans_to_token_labels(
     dataset=dataset.select(range(20)),
     token_column="tokens",
@@ -394,12 +395,13 @@ data for and the fewshot example columns. The only difference is that you have t
 yourself.
 
 ### Translation
+
 ```python
 import os
 from datasets import Dataset
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
+from src.ai_dataset_generator import DatasetGenerator
+from src.ai_dataset_generator.prompts import BasePrompt
 
 fewshot_dataset = Dataset.from_dict({
     "german": ["Der Film ist großartig!", "Der Film ist schlecht!"],
@@ -411,7 +413,7 @@ unlabeled_dataset = Dataset.from_dict({
 })
 
 prompt = BasePrompt(
-    task_description="Translate to german:", # Since we do not have a label column, 
+    task_description="Translate to german:",  # Since we do not have a label column, 
     # we can just specify the task description
     generate_data_for_column="german",
     fewshot_example_columns="english",
@@ -427,8 +429,8 @@ generator = DatasetGenerator(prompt_node)
 generated_dataset = generator.generate(
     prompt_template=prompt,
     fewshot_dataset=fewshot_dataset,
-    fewshot_examples_per_class=2, # Take both fewshot examples per prompt
-    fewshot_label_sampling_strategy=None, # Since we do not have a class label column, we can just set this to None 
+    fewshot_examples_per_class=2,  # Take both fewshot examples per prompt
+    fewshot_label_sampling_strategy=None,  # Since we do not have a class label column, we can just set this to None 
     # (default)
     unlabeled_dataset=unlabeled_dataset,
     max_prompt_calls=2,
@@ -438,16 +440,17 @@ generated_dataset.push_to_hub("your-first-generated-dataset")
 ```
 
 ### Textual similarity
+
 ```python
 import os
 from datasets import load_dataset
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
-from ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
+from src.ai_dataset_generator import DatasetGenerator
+from src.ai_dataset_generator.prompts import BasePrompt
+from src.ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
 
 dataset = load_dataset("glue", "mrpc", split="train")
-dataset, label_options = convert_label_ids_to_texts(dataset, "label", return_label_options=True) # convert the
+dataset, label_options = convert_label_ids_to_texts(dataset, "label", return_label_options=True)  # convert the
 # label ids to text labels and return the label options
 
 fewshot_dataset = dataset.select(range(10))
@@ -457,7 +460,7 @@ prompt = BasePrompt(
     task_description="Annotate the sentence pair whether it is: {}",
     label_options=label_options,
     generate_data_for_column="label",
-    fewshot_example_columns=["sentence1", "sentence2"], # we can pass an array of columns to use for the fewshot
+    fewshot_example_columns=["sentence1", "sentence2"],  # we can pass an array of columns to use for the fewshot
 )
 
 prompt_node = PromptNode(
@@ -470,12 +473,12 @@ generator = DatasetGenerator(prompt_node)
 generated_dataset, original_dataset = generator.generate(
     prompt_template=prompt,
     fewshot_dataset=fewshot_dataset,
-    fewshot_examples_per_class=1, # Take 1 fewshot examples per class per prompt
-    fewshot_sampling_column="label", # We want to sample fewshot examples based on the label column
-    fewshot_label_sampling_strategy="stratified", # We want to sample fewshot examples stratified by class
+    fewshot_examples_per_class=1,  # Take 1 fewshot examples per class per prompt
+    fewshot_sampling_column="label",  # We want to sample fewshot examples based on the label column
+    fewshot_label_sampling_strategy="stratified",  # We want to sample fewshot examples stratified by class
     unlabeled_dataset=unlabeled_dataset,
     max_prompt_calls=2,
-    return_unlabeled_dataset=True, # We can return the original unlabelled dataset which might be interesting in this
+    return_unlabeled_dataset=True,  # We can return the original unlabelled dataset which might be interesting in this
     # case to compare the annotation quality
 )
 
@@ -491,12 +494,12 @@ first sentence and a label like:
 import os
 from datasets import load_dataset
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
-from ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
+from src.ai_dataset_generator import DatasetGenerator
+from src.ai_dataset_generator.prompts import BasePrompt
+from src.ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
 
 dataset = load_dataset("glue", "mrpc", split="train")
-dataset, label_options = convert_label_ids_to_texts(dataset, "label", return_label_options=True) # convert the
+dataset, label_options = convert_label_ids_to_texts(dataset, "label", return_label_options=True)  # convert the
 # label ids to text labels and return the label options
 
 fewshot_dataset = dataset.select(range(10))
@@ -506,7 +509,7 @@ prompt = BasePrompt(
     task_description="Generate a sentence that is {} to sentence1.",
     label_options=label_options,
     generate_data_for_column="sentence2",
-    fewshot_example_columns=["sentence1", "label"], # we can pass an array of columns to use for the fewshot
+    fewshot_example_columns=["sentence1", "label"],  # we can pass an array of columns to use for the fewshot
 )
 
 prompt_node = PromptNode(
@@ -519,12 +522,12 @@ generator = DatasetGenerator(prompt_node)
 generated_dataset, original_dataset = generator.generate(
     prompt_template=prompt,
     fewshot_dataset=fewshot_dataset,
-    fewshot_examples_per_class=1, # Take 1 fewshot examples per class per prompt
-    fewshot_sampling_column="label", # We want to sample fewshot examples based on the label column
-    fewshot_label_sampling_strategy="stratified", # We want to sample fewshot examples stratified by class
+    fewshot_examples_per_class=1,  # Take 1 fewshot examples per class per prompt
+    fewshot_sampling_column="label",  # We want to sample fewshot examples based on the label column
+    fewshot_label_sampling_strategy="stratified",  # We want to sample fewshot examples stratified by class
     unlabeled_dataset=unlabeled_dataset,
     max_prompt_calls=2,
-    return_unlabeled_dataset=True, # We can return the original unlabelled dataset which might be interesting in this
+    return_unlabeled_dataset=True,  # We can return the original unlabelled dataset which might be interesting in this
     # case to compare the annotation quality
 )
 
@@ -541,9 +544,9 @@ conversion between spans and token labels welcomes contributions for a more stab
 import os
 from datasets import load_dataset
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
-from ai_dataset_generator.dataset_transformations.token_classification import convert_token_labels_to_spans,\
+from src.ai_dataset_generator import DatasetGenerator
+from src.ai_dataset_generator.prompts import BasePrompt
+from src.ai_dataset_generator.dataset_transformations import convert_token_labels_to_spans,
     convert_spans_to_token_labels
 
 dataset = load_dataset("conll2003", split="train")
@@ -580,7 +583,7 @@ generator = DatasetGenerator(prompt_node)
 generated_dataset, original_dataset = generator.generate(
     prompt_template=prompt,
     fewshot_dataset=fewshot_dataset,
-    fewshot_examples_per_class=3, # Take 3 fewshot examples (for token-level class we do not sample per class)
+    fewshot_examples_per_class=3,  # Take 3 fewshot examples (for token-level class we do not sample per class)
     unlabeled_dataset=unlabeled_dataset,
     max_prompt_calls=10,
     return_unlabeled_dataset=True,

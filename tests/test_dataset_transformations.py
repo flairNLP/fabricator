@@ -2,10 +2,10 @@ import unittest
 
 from datasets import load_dataset
 
+from ai_dataset_generator.prompts import BasePrompt
 from ai_dataset_generator.dataset_transformations.question_answering import *
 from ai_dataset_generator.dataset_transformations.text_classification import *
 from ai_dataset_generator.dataset_transformations.token_classification import *
-from ai_dataset_generator.prompts import BasePrompt
 
 
 class TestTransformationsTextClassification(unittest.TestCase):

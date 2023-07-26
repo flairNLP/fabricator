@@ -1,9 +1,6 @@
 """Sampling methods
 
 NOTE: All methods do not ensure, that all labels are contained in the samples.
-TODO: Implement mechanism: like num_examples == -1 -> infer labels and sample
-      as long as we do not have them all)
-
 """
 import random
 from typing import Dict, List, Set, Union, Tuple
