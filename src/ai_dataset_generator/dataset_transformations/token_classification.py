@@ -65,7 +65,6 @@ def convert_token_labels_to_spans(
 
 def convert_spans_to_token_labels(dataset, token_column, label_column, id2label: Dict) -> Dataset:
     """Converts span level labels to token level labels. This is useful for NER tasks to decode the output of the LLM.
-    #TODO: this is very slow for large datasets. We should remove dependency from spacy at some point.
 
     Args:
         dataset (Dataset): huggingface Dataset with span level labels
@@ -78,6 +77,7 @@ def convert_spans_to_token_labels(dataset, token_column, label_column, id2label:
     """
     new_label_column = f"{label_column}_tags"
     label2id = {v: k for k, v in id2label.items()}
+    labels_no_bio = set([label.replace("B-", "").replace("I-", "") for label in id2label.values()])
     nlp = spacy.blank("en")
 
     def labels_to_spans(examples):
@@ -99,9 +99,11 @@ def convert_spans_to_token_labels(dataset, token_column, label_column, id2label:
                 for label_and_entities in str_label.split(LABEL_SEPARATOR):
                     label, entities = label_and_entities.split(LABEL2ENTITY_SEPARATOR)
                     label = label.strip()
+                    if label not in labels_no_bio:
+                        continue
                     entities = [entity.strip().lower() for entity in entities.split(ENTITY_SEPARATOR)]
                     for entity in set(entities):
-                        pattern = re.compile(re.escape(entity))
+                        pattern = re.compile(r'\b' + re.escape(entity) + r'\b')
                         matches = pattern.finditer(text.lower())
                         for start, end in [(match.start(), match.end()) for match in matches]:
                             spans.append((start, end, label))
@@ -113,7 +115,7 @@ def convert_spans_to_token_labels(dataset, token_column, label_column, id2label:
             doc = nlp(text)
 
             try:
-                tags = biluo_to_iob(offsets_to_biluo_tags(doc, spans))
+                tags = [tag if tag != "-" else "O" for tag in biluo_to_iob(offsets_to_biluo_tags(doc, spans))]
                 words = [word.text for word in doc]
                 if not len(tags) == len(words) or len(tags) == 0 or len(words) == 0:
                     tags = []
@@ -134,7 +136,6 @@ def convert_spans_to_token_labels(dataset, token_column, label_column, id2label:
         dataset.map(labels_to_spans, batched=True)
         .remove_columns(label_column)
         .rename_column(new_label_column, label_column)
-        .filter(lambda example: len(example[token_column]) > 0)
     )
 
     return dataset
