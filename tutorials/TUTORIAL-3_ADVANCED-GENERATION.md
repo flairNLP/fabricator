@@ -1,4 +1,4 @@
-# Tutorial 2: Generate advanced datasets
+# Tutorial 3: Generate advanced datasets
 
 ## Customize prompts
 
