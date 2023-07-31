@@ -1,7 +1,6 @@
 from typing import List, Dict, Union, Optional
 
 from datasets import Dataset
-from langchain.prompts import PromptTemplate
 from loguru import logger
 
 
@@ -73,14 +72,11 @@ class BasePrompt:
         # Create prompt template for fewshot examples
         if self.relevant_columns_for_fewshot_examples:
             if fewshot_formatting_template is None:
-                fewshot_formatting_template = self.inner_fewshot_example_separator.join(
+                self.fewshot_prompt = self.inner_fewshot_example_separator.join(
                     [f"{var}: {{{var}}}" for var in self.relevant_columns_for_fewshot_examples]
                 )
-
-            self.fewshot_prompt = PromptTemplate(
-                input_variables=self.relevant_columns_for_fewshot_examples,
-                template=fewshot_formatting_template,
-            )
+            else:
+                self.fewshot_prompt = fewshot_formatting_template
 
         # Create format template for targets
         if target_formatting_template is None:
@@ -195,7 +191,7 @@ class BasePrompt:
 
         if examples:
             examples = self.filter_examples_by_columns(examples, self.relevant_columns_for_fewshot_examples)
-            formatted_examples = [self.fewshot_prompt.format_prompt(**example).text for example in examples]
+            formatted_examples = [self.fewshot_prompt.format(**example) for example in examples]
             prompt_text = self.fewshot_example_separator.join(
                 [task_description] + formatted_examples + [self.target_formatting_template]
             )
