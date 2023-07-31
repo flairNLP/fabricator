@@ -1,6 +1,5 @@
 datasets
-langchain
 farm-haystack>=1.18.0
-torch
+farm-haystack[inference]
 spacy
 loguru
