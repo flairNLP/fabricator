@@ -132,12 +132,17 @@ class DatasetGenerator:
         """
 
         if dummy_response:
+
             if isinstance(dummy_response, str):
+                logger.info(f"Returning dummy response: {dummy_response}")
                 return dummy_response
+
             if callable(dummy_response):
-                return dummy_response(prompt_text)
-            else:
-                raise ValueError("Dummy response must be a string or a callable")
+                dummy_value = dummy_response(prompt_text)
+                logger.info(f"Returning dummy response: {dummy_response}")
+                return dummy_value
+
+            raise ValueError("Dummy response must be a string or a callable")
 
         # Haystack internally uses timeouts and retries, so we dont have to do it
         # We dont catch authentification errors here, because we want to fail fast
