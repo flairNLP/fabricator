@@ -1,5 +1,4 @@
 datasets
 farm-haystack>=1.18.0
-farm-haystack[inference]
 spacy
 loguru
