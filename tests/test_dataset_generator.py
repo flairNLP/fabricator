@@ -17,7 +17,7 @@ class TestDatasetGenerator(unittest.TestCase):
             "text": ["This movie is great!", "This movie is bad!"],
             "label": ["positive", "negative"]
         })
-        self.generator = DatasetGenerator(PromptNode("google/flan-t5-small"))
+        self.generator = DatasetGenerator(None)
 
     def test_simple_generation(self):
         """Test simple generation without fewshot examples."""
@@ -28,6 +28,7 @@ class TestDatasetGenerator(unittest.TestCase):
         generated_dataset = self.generator.generate(
             prompt_template=prompt,
             max_prompt_calls=2,
+            dummy_response="A dummy movie review."
         )
 
         self.assertEqual(len(generated_dataset), 2)
@@ -44,6 +45,7 @@ class TestDatasetGenerator(unittest.TestCase):
         generated_dataset = self.generator.generate(
             prompt_template=prompt,
             max_prompt_calls=2,
+            dummy_response="A dummy movie review."
         )
 
         self.assertEqual(len(generated_dataset), 2)
@@ -66,6 +68,7 @@ class TestDatasetGenerator(unittest.TestCase):
             fewshot_label_sampling_strategy="uniform",
             fewshot_sampling_column="label",
             max_prompt_calls=2,
+            dummy_response="A dummy movie review."
         )
 
         self.assertEqual(len(generated_dataset), 2)
@@ -93,6 +96,7 @@ class TestDatasetGenerator(unittest.TestCase):
             fewshot_label_sampling_strategy="stratified",
             unlabeled_dataset=unlabeled_dataset,
             max_prompt_calls=2,
+            dummy_response="A dummy movie review."
         )
 
         self.assertEqual(len(generated_dataset), 2)
@@ -129,6 +133,7 @@ class TestDatasetGenerator(unittest.TestCase):
             # (default)
             unlabeled_dataset=unlabeled_dataset,
             max_prompt_calls=2,
+            dummy_response="A dummy movie review."
         )
 
         self.assertEqual(len(generated_dataset), 2)
@@ -161,9 +166,40 @@ class TestDatasetGenerator(unittest.TestCase):
             unlabeled_dataset=unlabeled_dataset,
             max_prompt_calls=2,
             return_unlabeled_dataset=True,
+            dummy_response="A dummy movie review."
         )
 
         self.assertEqual(len(generated_dataset), 2)
         self.assertEqual(generated_dataset.features["sentence1"].dtype, "string")
         self.assertEqual(generated_dataset.features["sentence2"].dtype, "string")
         self.assertEqual(generated_dataset.features["label"].dtype, "string")
+
+    def test_dummy_response(self):
+
+        prompt = BasePrompt(
+            task_description="Generate a short movie review.",
+        )
+        generated_dataset = self.generator.generate(
+            prompt_template=prompt,
+            max_prompt_calls=2,
+            dummy_response=lambda _: "This is a dummy movie review."
+        )
+
+        self.assertEqual(len(generated_dataset), 2)
+        self.assertEqual(generated_dataset.features["text"].dtype, "string")
+        self.assertIn("text", generated_dataset.features)
+        self.assertEqual(generated_dataset[0]["text"], "This is a dummy movie review.")
+        self.assertEqual(generated_dataset[1]["text"], "This is a dummy movie review.")
+
+
+        generated_dataset = self.generator.generate(
+            prompt_template=prompt,
+            max_prompt_calls=2,
+            dummy_response="This is a dummy movie review as a string."
+        )
+
+        self.assertEqual(len(generated_dataset), 2)
+        self.assertEqual(generated_dataset.features["text"].dtype, "string")
+        self.assertIn("text", generated_dataset.features)
+        self.assertEqual(generated_dataset[0]["text"], "This is a dummy movie review as a string.")
+        self.assertEqual(generated_dataset[1]["text"], "This is a dummy movie review as a string.")
