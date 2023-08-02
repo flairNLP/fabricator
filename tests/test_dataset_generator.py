@@ -17,6 +17,8 @@ class TestDatasetGenerator(unittest.TestCase):
             "text": ["This movie is great!", "This movie is bad!"],
             "label": ["positive", "negative"]
         })
+
+        # We are using dummy respones here, because we are not testing the LLM itself.
         self.generator = DatasetGenerator(None)
 
     def test_simple_generation(self):
