@@ -546,8 +546,7 @@ from datasets import load_dataset
 from haystack.nodes import PromptNode
 from ai_dataset_generator import DatasetGenerator
 from ai_dataset_generator.prompts import BasePrompt
-from ai_dataset_generator.dataset_transformations import convert_token_labels_to_spans,
-    convert_spans_to_token_labels
+from ai_dataset_generator.dataset_transformations import convert_token_labels_to_spans, convert_spans_to_token_labels
 
 dataset = load_dataset("conll2003", split="train")
 expanded_label_mapping = {
