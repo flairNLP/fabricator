@@ -3,7 +3,7 @@ import time
 
 from pathlib import Path
 from collections import defaultdict
-from typing import Any, Dict, Optional, Union, Tuple, List
+from typing import Any, Callable, Dict, Optional, Union, Tuple, List
 from tqdm import tqdm
 from loguru import logger
 
@@ -53,14 +53,15 @@ class DatasetGenerator:
         prompt_template: BasePrompt,
         fewshot_dataset: Optional[Dataset] = None,
         fewshot_examples_per_class: int = 1,
-        fewshot_label_sampling_strategy: str = None,
-        fewshot_sampling_column: str = None,
+        fewshot_label_sampling_strategy: Optional[str] = None,
+        fewshot_sampling_column: Optional[str] = None,
         unlabeled_dataset: Optional[Dataset] = None,
         return_unlabeled_dataset: bool = False,
         max_prompt_calls: int = 10,
         num_samples_to_generate: int = 10,
         timeout_per_prompt: Optional[int] = None,
         log_every_n_api_calls: int = 25,
+        dummy_response: Optional[Union[str, Callable]] = None
     ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
         """Generate a dataset based on a prompt template and support examples.
         Optionally, unlabeled examples can be provided to annotate unlabeled data.
@@ -81,6 +82,7 @@ class DatasetGenerator:
             num_samples_to_generate (int, optional): Number of samples to generate. Defaults to 10.
             timeout_per_prompt (Optional[int], optional): Timeout per prompt call. Defaults to None.
             log_every_n_api_calls (int, optional): Log every n api calls. Defaults to 25.
+            dummy_response (Optional[Union[str, Callable]], optional): Dummy response for dry runs. Defaults to None.
 
         Returns:
             Union[Dataset, Tuple[Dataset, Dataset]]: Generated dataset or tuple of generated dataset and original
@@ -107,6 +109,7 @@ class DatasetGenerator:
             num_samples_to_generate,
             timeout_per_prompt,
             log_every_n_api_calls,
+            dummy_response
         )
 
         if return_unlabeled_dataset:
@@ -115,7 +118,7 @@ class DatasetGenerator:
         return generated_dataset
 
     def _try_generate(
-        self, prompt_text: str, invocation_context: Dict,
+        self, prompt_text: str, invocation_context: Dict, dummy_response: Optional[Union[str, Callable]]
     ) -> Optional[str]:
         """Tries to generate a single example. Restrict the time spent on this.
 
@@ -127,6 +130,19 @@ class DatasetGenerator:
         Returns:
             Generated example
         """
+
+        if dummy_response:
+
+            if isinstance(dummy_response, str):
+                logger.info(f"Returning dummy response: {dummy_response}")
+                return dummy_response
+
+            if callable(dummy_response):
+                dummy_value = dummy_response(prompt_text)
+                logger.info(f"Returning dummy response: {dummy_response}")
+                return dummy_value
+
+            raise ValueError("Dummy response must be a string or a callable")
 
         # Haystack internally uses timeouts and retries, so we dont have to do it
         # We dont catch authentification errors here, because we want to fail fast
@@ -154,6 +170,7 @@ class DatasetGenerator:
         num_samples_to_generate: int,
         timeout_per_prompt: Optional[int],
         log_every_n_api_calls: int = 25,
+        dummy_response: Optional[Union[str, Callable]] = None
     ):
         current_tries_left = self._max_tries
         current_log_file = self._setup_log(prompt_template)
@@ -199,7 +216,7 @@ class DatasetGenerator:
                         f"Invocation context: {invocation_context} \n"
                     )
 
-            prediction = self._try_generate(prompt_text, invocation_context)
+            prediction = self._try_generate(prompt_text, invocation_context, dummy_response)
 
             if prediction is None:
                 current_tries_left -= 1
