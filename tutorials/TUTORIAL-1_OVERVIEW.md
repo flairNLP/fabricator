@@ -225,6 +225,6 @@ generated_dataset = generator.generate(
     unlabeled_dataset=unlabeled_dataset,
     prompt_template=prompt_template,  # from above
     max_prompt_calls=5,  # max number of calls to the LLM
-    fewshot_examples_per_prompt=1,  # number of support examples per prompt
+    fewshot_examples_per_class=1,  # number of fewshot examples per class per prompt
 )
 ```
