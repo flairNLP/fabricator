@@ -14,3 +14,8 @@ ignore-patterns = '''test_.*\.py,
 disable = '''logging-fstring-interpolation,
     missing-module-docstring,
 '''
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src"
+]
