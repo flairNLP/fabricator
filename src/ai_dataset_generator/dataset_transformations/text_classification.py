@@ -38,14 +38,14 @@ def replace_class_labels(id2label: Union[Dict[str, str], Dict[int, str]], expand
     Returns:
         Dict: mapping from label ids to label names with expanded labels
     """
-    if all([isinstance(k, int) for k in expanded_labels.keys()]):
+    if all(isinstance(k, int) for k in expanded_labels.keys()):
         type_keys = "int"
-    elif all([isinstance(k, str) for k in expanded_labels.keys()]):
+    elif all(isinstance(k, str) for k in expanded_labels.keys()):
         type_keys = "str"
     else:
         raise ValueError("Keys of expanded_labels must be either all ints or all strings.")
 
-    if not all([isinstance(v, str) for v in expanded_labels.values()]):
+    if not all(isinstance(v, str) for v in expanded_labels.values()):
         raise ValueError("Values of expanded_labels must be strings.")
 
     if type_keys == "str":
@@ -64,8 +64,8 @@ def convert_label_ids_to_texts(
     dataset: Union[Dataset, DatasetDict],
     label_column: str,
     expanded_label_mapping: Dict = None,
-    return_label_options: bool = True,
-) -> Tuple[Dataset | DatasetDict, list[str]] | Dataset | DatasetDict:
+    return_label_options: bool = False,
+) -> Union[Dataset, DatasetDict, Tuple[Union[Dataset, DatasetDict], List[str]]]:
     """Converts label IDs to natural language labels for any classification problem with a single label such as text
     classification. Note that if the function is not applied to a Dataset, the label column will contain the IDs.
     If the function is applied, the label column will contain the natural language labels.
@@ -88,7 +88,7 @@ def convert_label_ids_to_texts(
         id2label = replace_class_labels(id2label, expanded_label_mapping)
 
     new_label_column = f"{label_column}_natural_language"
-    label_options = list(set(id2label.values()))
+    label_options = list(id2label.values())
 
     def labels_to_natural_language(examples):
         examples[new_label_column] = id2label[examples[label_column]]

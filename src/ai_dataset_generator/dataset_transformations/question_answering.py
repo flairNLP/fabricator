@@ -14,13 +14,13 @@ def preprocess_squad_format(dataset: Dataset) -> Dataset:
     """
 
     def preprocess(example):
-        if example["answer"]:
-            example["answer"] = example["answer"].pop()
+        if example["answers"]:
+            example["answers"] = example["answers"].pop()
         else:
-            example["answer"] = ""
+            example["answers"] = ""
         return example
 
-    dataset = dataset.flatten().rename_column("answers.text", "answer").map(preprocess)
+    dataset = dataset.flatten().rename_column("answers.text", "answers").map(preprocess)
     return dataset
 
 
@@ -46,17 +46,17 @@ def postprocess_squad_format(dataset: Dataset, add_answer_start: bool = True) ->
         dataset = dataset.map(calculate_answer_start)
 
     def unify_answers(example):
+        example["answers"] = {"text": example["answers"], "start": example["answer_start"]}
         is_unanswerable = "answer_start" in example
         if is_unanswerable:
-            example["answer"] = {"text": [example["answer"]], "answer_start": [example["answer_start"]]}
+            example["answers"] = {"text": [example["answers"]], "answer_start": [example["answer_start"]]}
         else:
-            example["answer"] = {"text": [], "answer_start": []}
+            example["answers"] = {"text": [], "answer_start": []}
         return example
 
     dataset = dataset.map(unify_answers)
     if "answer_start" in dataset.column_names:
         dataset = dataset.remove_columns("answer_start")
-    dataset = dataset.rename_column("answer", "answers")
     return dataset
 
 
@@ -69,17 +69,17 @@ def calculate_answer_start(example):
     Returns:
         Dict: The SQuAD example with the answer start index added.
     """
-    answer_start = example["context"].lower().find(example["answer"].lower())
+    answer_start = example["context"].lower().find(example["answers"].lower())
     if answer_start < 0:
         logger.info(
             'Could not calculate the answer start because the context "{}" ' 'does not contain the answer "{}".',
             example["context"],
-            example["answer"],
+            example["answers"],
         )
         answer_start = -1
     else:
         # check that the answer doesn't occur more than once in the context
-        second_answer_start = example["context"].lower().find(example["answer"].lower(), answer_start + 1)
+        second_answer_start = example["context"].lower().find(example["answers"].lower(), answer_start + 1)
         if second_answer_start >= 0:
             logger.info("Could not calculate the answer start because the context contains the answer more than once.")
             answer_start = -1
