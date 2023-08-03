@@ -37,7 +37,7 @@ def postprocess_squad_format(dataset: Dataset, add_answer_start: bool = True) ->
     """
     # remove punctuation and whitespace from the start and end of the answer
     def remove_punctuation(example):
-        example["answer"] = example["answer"].strip(".,;!? ")
+        example["answers"] = example["answers"].strip(".,;!? ")
         return example
 
     dataset = dataset.map(remove_punctuation)
@@ -46,9 +46,8 @@ def postprocess_squad_format(dataset: Dataset, add_answer_start: bool = True) ->
         dataset = dataset.map(calculate_answer_start)
 
     def unify_answers(example):
-        example["answers"] = {"text": example["answers"], "start": example["answer_start"]}
-        is_unanswerable = "answer_start" in example
-        if is_unanswerable:
+        is_answerable = "answer_start" in example
+        if is_answerable:
             example["answers"] = {"text": [example["answers"]], "answer_start": [example["answer_start"]]}
         else:
             example["answers"] = {"text": [], "answer_start": []}
@@ -85,6 +84,6 @@ def calculate_answer_start(example):
             answer_start = -1
         else:
             # correct potential wrong capitalization of the answer compared to the context
-            example["answer"] = example["context"][answer_start : answer_start + len(example["answer"])]
+            example["answers"] = example["context"][answer_start : answer_start + len(example["answers"])]
     example["answer_start"] = answer_start
     return example
