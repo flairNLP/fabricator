@@ -4,18 +4,16 @@ from argparse import ArgumentParser
 
 from datasets import Sequence, Value, load_dataset, concatenate_datasets
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator
+from ai_dataset_generator import DatasetGenerator, BasePrompt
 from ai_dataset_generator.dataset_transformations.question_answering import (
     preprocess_squad_format,
     postprocess_squad_format,
 )
-from ai_dataset_generator.prompts import TextLabelPrompt
 
 
 def run(arguments):
     """Generate answers based on a few-shot example from context and question."""
     org = load_dataset(arguments.dataset, split=arguments.split)
-
 
     dataset_name = f"qa-dataset"
     dataset_answerable_questions = org.filter(lambda sample: sample['answers']['text']).shuffle()
@@ -32,19 +30,19 @@ def run(arguments):
     filtered_original_datasets = []
 
     def merge_columns(example):
-        if example["answer"] == "":
+        if example["answers"] == "":
             example["question"] = example["question"]
             return example
-        example["question"] = f"{example['question']}\nAnswer: {example['answer']}"
+        example["question"] = f"{example['question']}\nAnswer: {example['answers']}"
         return example
 
     def split_columns(example):
         entries = example["question"].split("\nAnswer:")
         example["question"] = entries[0]
         if len(entries) == 1:
-            example["answer"] = ""
+            example["answers"] = ""
             return example
-        example["answer"] = entries[1].strip()
+        example["answers"] = entries[1].strip()
         return example
 
     for index, dataset in enumerate([dataset_answerable_questions, dataset_unanswerable_questions]):
@@ -59,23 +57,20 @@ def run(arguments):
                 "Given a text, first create a difficult question that can be answered using the text. The question must describe the context of the text. Second, extract the answer to this question from the text. The answer must be word for word exactly as it appears in the text.",
                 f"You are a student and a teacher is teaching you about a new topic. Ask a short follow-up question about something the teacher hasn't mentioned yet at all. You must not ask something you already know the answer to from the teacher's explanations. You must not ask for further clarification if the teacher already mentioned something in passing. The question should be self-contained. It must not contain the word \"other\" as in \"which other\" or \"what other\". The question should start with one of {random.sample(question_words, 3)}"]
 
-            prompt = TextLabelPrompt(
-                input_variables=arguments.input_variables,
-                target_variable=arguments.target_variable,
+            prompt = BasePrompt(
                 task_description=task_descriptions[index],
+                fewshot_example_columns=arguments.input_variables,
+                generate_data_for_column=arguments.target_variable,
             )
-
-            raw_prompt = prompt.get_prompt_text(fewshot_examples)
-            print(raw_prompt)
 
             current_unlabeled_examples = unlabeled_examples.select(range(i, min(len(unlabeled_examples), i + arguments.save_steps)))
             generated_dataset, original_dataset = generator.generate(
-                support_examples=fewshot_examples,
-                unlabeled_examples=current_unlabeled_examples,
+                fewshot_dataset=fewshot_examples,
+                fewshot_examples_per_class=arguments.support_examples_per_prompt,
+                unlabeled_dataset=current_unlabeled_examples,
                 prompt_template=prompt,
                 max_prompt_calls=arguments.max_prompt_calls,
-                support_examples_per_prompt=arguments.support_examples_per_prompt,
-                return_original_dataset=True,
+                return_unlabeled_dataset=True,
             )
 
             generated_dataset = generated_dataset.map(split_columns)
@@ -106,7 +101,7 @@ def run(arguments):
             original_dataset = dataset.filter(lambda example: example['id'] in ids_to_keep)
 
             features = generated_dataset.features
-            features["answers"] = Sequence(feature={'text': Value(dtype='string', id=None), 'answer_start': Value(dtype='int64', id=None)}, length=-1, id=None)
+            features["answers"] = Sequence(feature={'text': Value(dtype='string', id=None), 'answer_start': Value(dtype='int32', id=None)}, length=-1, id=None)
             generated_dataset = generated_dataset.cast(features)
 
             filtered_generated_datasets.append(generated_dataset)
@@ -116,6 +111,7 @@ def run(arguments):
             filtered_generated_concatenated_dataset.save_to_disk(f"{dataset_name}-generated-{index}-{i}")
             filtered_original_concatenated_dataset = concatenate_datasets(filtered_original_datasets)
             filtered_original_concatenated_dataset.save_to_disk(f"{dataset_name}-original-{index}-{i}")
+
     if arguments.push_to_hub:
         filtered_generated_concatenated_dataset.push_to_hub(f"{dataset_name}-generated-{len(filtered_generated_concatenated_dataset)}", private=False)
         filtered_original_concatenated_dataset.push_to_hub(f"{dataset_name}-original-{len(filtered_original_concatenated_dataset)}", private=False)
@@ -123,7 +119,7 @@ def run(arguments):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--llm", type=str, default="text-davinci-003")
+    parser.add_argument("--llm", type=str, default="gpt-3.5-turbo")
     parser.add_argument("--max_generation_length", type=int, default=100)
     parser.add_argument(
         "--task_description",

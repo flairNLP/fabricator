@@ -199,4 +199,4 @@ class TestTransformationsQuestionAnswering(unittest.TestCase):
         dataset = preprocess_squad_format(self.dataset.select(range(50)))
         dataset = postprocess_squad_format(dataset)
         self.assertEqual(type(dataset[0]["answers"]), dict)
-        self.assertIn("start", dataset[0]["answers"])
+        self.assertIn("answer_start", dataset[0]["answers"])
