@@ -10,8 +10,8 @@
 <div align="center">
 <hr>
 
-[Installation](#installation) - [Basic Concepts](#basic-concepts) - [Examples](#examples) - [Tutorials](tutorials/TUTORIAL-1_OVERVIEW.md) - 
-Paper - [Citation](#citation)
+[Installation](#installation) | [Basic Concepts](#basic-concepts) | [Examples](#examples) | [Tutorials](tutorials/TUTORIAL-1_OVERVIEW.md) | 
+Paper | [Citation](#citation)
 
 <hr>
 </div>
@@ -32,10 +32,10 @@ prompt customization, integration and sampling of fewshot examples or annotation
 ## Installation
 Using conda:
 ```
-git clone git@github.com:flairNLP/ai-dataset-generator.git
-cd ai-dataset-generator
-conda create -y -n aidatasetgenerator python=3.10
-conda activate aidatasetgenerator
+git clone git@github.com:flairNLP/fabricator.git
+cd fabricator
+conda create -y -n fabricator python=3.10
+conda activate fabricator
 pip install -e .
 ```
 
