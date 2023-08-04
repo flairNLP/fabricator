@@ -56,7 +56,7 @@ def run():
             prompt_template=prompt,
             fewshot_dataset=fewshot_dataset,
             fewshot_examples_per_class=fewshot_example_per_class,
-            fewshot_label_sampling_strategy="uniform",
+            fewshot_sampling_strategy="uniform",
             fewshot_sampling_column="coarse_label",
             max_prompt_calls=500,
             num_samples_to_generate=500,

@@ -40,7 +40,7 @@ def run():
         prompt_template=prompt,
         fewshot_dataset=fewshot_dataset,
         fewshot_examples_per_class=2,
-        fewshot_label_sampling_strategy="stratified",
+        fewshot_sampling_strategy="stratified",
         unlabeled_dataset=annotation_dataset,
         max_prompt_calls=len(annotation_dataset),
         return_unlabeled_dataset=True
