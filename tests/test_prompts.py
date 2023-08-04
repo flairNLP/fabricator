@@ -2,7 +2,7 @@ import unittest
 
 from datasets import load_dataset, Dataset, QuestionAnsweringExtractive, TextClassification, Summarization
 
-from ai_dataset_generator.prompts import (
+from fabricator.prompts import (
     BasePrompt,
     infer_prompt_from_task_template,
 )
