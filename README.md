@@ -1,4 +1,6 @@
-<h1 align="center">Dataset Generator</h1>
+![Fabricator Logo](resources/logo_fabricator.drawio_dark.png#gh-dark-mode-only)
+![Fabricator Logo](resources/logo_fabricator.drawio_white.png#gh-light-mode-only)
+
 <p align="center">A flexible open-source framework to generate datasets with large language models.</p>
 <p align="center">
 <img alt="version" src="https://img.shields.io/badge/version-0.1-green">
@@ -64,8 +66,8 @@ as that:
 ```python
 import os
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
+from fabricator import DatasetGenerator
+from fabricator.prompts import BasePrompt
 
 prompt = BasePrompt(
     task_description="Generate a short movie review.",

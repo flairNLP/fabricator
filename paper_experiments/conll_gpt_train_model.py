@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from datasets import load_dataset
-from ai_dataset_generator import convert_spans_to_token_labels
+from fabricator import convert_spans_to_token_labels
 from seqeval.metrics import accuracy_score, f1_score
 
 

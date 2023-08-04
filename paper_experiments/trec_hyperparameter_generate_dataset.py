@@ -1,8 +1,8 @@
 import os
 from datasets import load_dataset, concatenate_datasets
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator, BasePrompt
-from ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
+from fabricator import DatasetGenerator, BasePrompt
+from fabricator.dataset_transformations.text_classification import convert_label_ids_to_texts
 
 def run():
     for possible_examples_per_class, fewshot_example_per_class in [(0,0), (2,2), (4,2), (4,3), (4,4), (8,2), (8,3),
