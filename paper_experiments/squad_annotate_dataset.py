@@ -4,8 +4,8 @@ from argparse import ArgumentParser
 
 from datasets import Sequence, Value, load_dataset, concatenate_datasets
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator, BasePrompt
-from ai_dataset_generator.dataset_transformations.question_answering import (
+from fabricator import DatasetGenerator, BasePrompt
+from fabricator.dataset_transformations.question_answering import (
     preprocess_squad_format,
     postprocess_squad_format,
 )

@@ -1,8 +1,8 @@
 import os
 from datasets import load_dataset
 from haystack.nodes import PromptNode
-from ai_dataset_generator import DatasetGenerator, BasePrompt
-from ai_dataset_generator.dataset_transformations.token_classification import convert_token_labels_to_spans
+from fabricator import DatasetGenerator, BasePrompt
+from fabricator.dataset_transformations.token_classification import convert_token_labels_to_spans
 
 
 def run():
