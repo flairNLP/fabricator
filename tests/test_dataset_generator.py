@@ -1,9 +1,10 @@
 import unittest
 
 from datasets import Dataset, load_dataset
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
-from ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
+
+from fabricator import DatasetGenerator
+from fabricator.prompts import BasePrompt
+from fabricator.dataset_transformations.text_classification import convert_label_ids_to_texts
 
 
 class TestDatasetGenerator(unittest.TestCase):

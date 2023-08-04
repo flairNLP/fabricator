@@ -3,7 +3,7 @@ import unittest
 from collections import Counter
 from datasets import load_dataset
 
-from ai_dataset_generator.samplers import random_sampler, single_label_task_sampler, ml_mc_sampler, \
+from fabricator.samplers import random_sampler, single_label_task_sampler, ml_mc_sampler, \
     single_label_stratified_sample
 
 
