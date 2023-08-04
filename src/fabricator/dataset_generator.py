@@ -18,7 +18,7 @@ from .utils import log_dir, create_timestamp_path
 
 
 class DatasetGenerator:
-    """The DatasetGenerator class is the main class of the ai_dataset_generator package.
+    """The DatasetGenerator class is the main class of the fabricator package.
     It generates datasets based on a prompt template. The main function is generate()."""
 
     def __init__(self, prompt_node: PromptNode, max_tries: int = 10):
