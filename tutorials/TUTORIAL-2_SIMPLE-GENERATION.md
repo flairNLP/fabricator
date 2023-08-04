@@ -78,7 +78,7 @@ reviews and provide the LLM with examples, we need to specify the `generate_data
 
 Since we are using fewshot examples, we can control the prompt generation through different sampling strategies and 
 number of examples per class. We pass the `fewshot_dataset` to the generate function and specify to use one fewshot 
-example per class per prompt. The `fewshot_label_sampling_strategy` argument specifies how to sample from the fewshot 
+example per class per prompt. The `fewshot_sampling_strategy` argument specifies how to sample from the fewshot 
 dataset. In this case, we use a uniform sampling strategy which means that the generator will uniformly sample one
 example per class from the fewshot dataset. The `fewshot_sampling_column` argument specifies which column to use for
 sampling. In this case, we use the `label` column.
@@ -114,7 +114,7 @@ generated_dataset = generator.generate(
     prompt_template=prompt,
     fewshot_dataset=fewshot_dataset,
     fewshot_examples_per_class=1,
-    fewshot_label_sampling_strategy="uniform",
+    fewshot_sampling_strategy="uniform",
     fewshot_sampling_column="label",
     max_prompt_calls=10,
 )
@@ -129,7 +129,7 @@ two columns: `text` and `label`. We also have an unlabeled dataset with only a `
 unlabeled dataset with the fewshot dataset. In order to do this, we need to specify the `unlabeled_dataset` argument
 to the `DatasetGenerator.generate()` method. We also need to specify the `fewshot_examples_per_class` argument to
 specify how many fewshot examples to use per class. In this case, we use one example per class. The 
-`fewshot_label_sampling_strategy` argument specifies how to sample from the fewshot dataset. 
+`fewshot_sampling_strategy` argument specifies how to sample from the fewshot dataset. 
 In this case, we use a stratfied sampling strategy which means that the generator will sample exactly one example from 
 each class from the fewshot dataset. In this case, we do not need to explicitly specify the `fewshot_sampling_column`
 argument since the generator will use the column specified in `generate_data_for_column` by default.
@@ -170,7 +170,7 @@ generated_dataset = generator.generate(
     prompt_template=prompt,
     fewshot_dataset=fewshot_dataset,
     fewshot_examples_per_class=1,
-    fewshot_label_sampling_strategy="stratified",
+    fewshot_sampling_strategy="stratified",
     unlabeled_dataset=unlabeled_dataset,
     max_prompt_calls=10,
 )
