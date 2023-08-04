@@ -47,10 +47,9 @@ we need four basic modules: a dataset, a prompt, a language model and a generato
 unlabeled datasets and store the generated or annotated datasets with their `Dataset` class. Once
 created, you can share the dataset with others via the hub or use it for your model training.
 - <b>Prompt</b>: A prompt is the instruction made to the language model. It can be a simple sentence or a more complex
-template with placeholders. We utilize [langchain](https://github.com/langchain-ai/langchain) `PromptTemplate` classes
-and provide an easy interface for custom dataset generation prompts in which you can specify label options
-for the LLM to choose from, provide fewshot examples to support the prompt with or annotate an unlabeled dataset
-in a specific way.
+template with placeholders. We provide an easy interface for custom dataset generation prompts in which you can specify 
+label options for the LLM to choose from, provide fewshot examples to support the prompt with or annotate an unlabeled 
+dataset in a specific way.
 - <b>LLM</b>: We use [deepset's haystack library](https://github.com/deepset-ai/haystack) as our LLM interface. deepset
 supports a wide range of LLMs including OpenAI, all models from the HuggingFace model hub and many more.
 - <b>Generator</b>: The generator is the core of this framework. It takes a dataset, a prompt and a LLM and generates a
