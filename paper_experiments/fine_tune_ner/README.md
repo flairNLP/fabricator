@@ -12,7 +12,7 @@ python -m pip install -e .
 Install relevant requirements for experiment
 
 ```bash
-python -m pip instal -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ## Fine-tune Model
@@ -40,6 +40,8 @@ torchrun --nproc_per_node=2 train.py \
 ```
 
 ## Evaluate LLM with library
+
+This will generate NER tokens based on the CONLL03 evaluation split and evaluate at it against the gold labels.
 
 ```bash
 python evaluate.py --model_name_or_path "<HF_MODEL>"
