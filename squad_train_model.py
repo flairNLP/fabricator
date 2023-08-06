@@ -36,24 +36,25 @@ if __name__ == '__main__':
     model_name = "roberta-base"  # "bert-base-uncased" is a worse alternative
     dataset_names = ["julianrisch/qa-dataset-generated-21020", "julianrisch/qa-dataset-original-21020"]
 
-    for dataset_name in dataset_names:
-        squad_filename = hf_to_squad(dataset_name)
-        dataset = SquadData.from_file(filename=f"{squad_filename}.json")
-        for num_samples in config:
-            train_filename = f"{squad_filename}-{num_samples}.json"
-            sample = dataset.sample_questions(num_samples)
-            SquadData(squad_data=sample).save(train_filename)
+    for seed in [41, 42, 43, 44]:
+        for dataset_name in dataset_names:
+            squad_filename = hf_to_squad(dataset_name)
+            dataset = SquadData.from_file(filename=f"{squad_filename}.json")
+            for num_samples in config:
+                train_filename = f"{squad_filename}-{num_samples}.json"
+                sample = dataset.sample_questions(num_samples)
+                SquadData(squad_data=sample).save(train_filename)
 
-            # Model Training
-            reader_directory = f"{squad_filename}-{num_samples}-{model_name}"
-            reader = FARMReader(model_name_or_path=model_name, return_no_answer=True, use_confidence_scores=False)
-            reader.train(data_dir="", train_filename=train_filename, dev_split=0.1, use_gpu=True, batch_size=16, max_seq_len=384)
-            reader.save(Path(reader_directory))
+                # Model Training
+                reader_directory = f"{squad_filename}-{seed}-{num_samples}-{model_name}"
+                reader = FARMReader(model_name_or_path=model_name, return_no_answer=True, use_confidence_scores=False)
+                reader.train(data_dir="", train_filename=train_filename, dev_split=0.1, use_gpu=True, batch_size=16, max_seq_len=384)
+                reader.save(Path(reader_directory))
 
-            # Model Evaluation
-            reader = FARMReader(reader_directory, return_no_answer=True, use_confidence_scores=False, max_seq_len=384)
-            reader_eval_results = reader.eval_on_file(data_dir="", test_filename="dev-v2.0.json")
-            with open("log.txt", "a") as log_file:
-                log_file.write(str(reader_directory)+'\n')
-                log_file.write(str(reader_eval_results)+'\n')
+                # Model Evaluation
+                reader = FARMReader(reader_directory, return_no_answer=True, use_confidence_scores=False, max_seq_len=384)
+                reader_eval_results = reader.eval_on_file(data_dir="", test_filename="dev-v2.0.json")
+                with open(f"log{str(seed)}-{str(num_samples)}.txt", "a") as log_file:
+                    log_file.write(str(reader_directory)+'\n')
+                    log_file.write(str(reader_eval_results)+'\n')
 
