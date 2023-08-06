@@ -1,18 +1,15 @@
 import argparse
 import os
-import random
 
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset, load_from_disk, Dataset
 from haystack.nodes import PromptNode
 
-from transformers import AutoModelForCausalLM, AutoTokenizer
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.preprocessing import MultiLabelBinarizer
 
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
-from ai_dataset_generator.samplers import random_sampler
-from ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
+from fabricator import DatasetGenerator
+from fabricator.prompts import BasePrompt
+from fabricator.samplers import random_sampler
 
 
 ner_prompt = (
@@ -21,16 +18,14 @@ ner_prompt = (
 
 def main(args):
 
-    # model_name_or_path = "EleutherAI/pythia-70M-deduped"
     dataset = load_dataset(args.dataset_name, split=args.split)
-    fewshot_examples = dataset.select(random.sample(range(len(dataset)), 3))
 
 
     prompt = BasePrompt(
         task_description=ner_prompt,
         generate_data_for_column="ner_tags",
         fewshot_example_columns="tokens",
-        label_options=None #{"O", 1: "B-PER", 2: "I-PER", 3: "B-ORG", 4: "I-ORG", 5: "B-LOC", 6: "I-LOC"},
+        label_options={0: "O", 1: "B-PER", 2: "I-PER", 3: "B-ORG", 4: "I-ORG", 5: "B-LOC", 6: "I-LOC"},
     )
 
     unlabeled_data = random_sampler(dataset, 30)
@@ -46,12 +41,10 @@ def main(args):
 
 
         generator = DatasetGenerator(prompt_node)
-        generated_dataset = generator.generate(
+        generated_dataset: Dataset = generator.generate(
             prompt_template=prompt,
-            fewshot_dataset=None,
             unlabeled_dataset=unlabeled_data,
             max_prompt_calls=30,
-            fewshot_examples_per_class=0,
             timeout_per_prompt=2,
         )
 
