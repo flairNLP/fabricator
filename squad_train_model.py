@@ -32,7 +32,7 @@ def hf_to_squad(dataset_name: str) -> str:
 
 
 if __name__ == '__main__':
-    config = [1_000, 10_000, 20_000]
+    config = [1_000, 10_000]
     model_name = "roberta-base"  # "bert-base-uncased" is a worse alternative
     dataset_names = ["julianrisch/qa-dataset-generated-21020", "julianrisch/qa-dataset-original-21020"]
 
@@ -47,12 +47,12 @@ if __name__ == '__main__':
             # Model Training
             reader_directory = f"{squad_filename}-{num_samples}-{model_name}"
             reader = FARMReader(model_name_or_path=model_name, return_no_answer=True, use_confidence_scores=False)
-            reader.train(data_dir="..", train_filename=train_filename, dev_split=0.1, use_gpu=True, batch_size=16, max_seq_len=384)
+            reader.train(data_dir="", train_filename=train_filename, dev_split=0.1, use_gpu=True, batch_size=16, max_seq_len=384)
             reader.save(Path(reader_directory))
 
             # Model Evaluation
             reader = FARMReader(reader_directory, return_no_answer=True, use_confidence_scores=False, max_seq_len=384)
-            reader_eval_results = reader.eval_on_file(data_dir="..", test_filename="dev-v2.0.json")
+            reader_eval_results = reader.eval_on_file(data_dir="", test_filename="dev-v2.0.json")
             with open("log.txt", "a") as log_file:
                 log_file.write(str(reader_directory)+'\n')
                 log_file.write(str(reader_eval_results)+'\n')
