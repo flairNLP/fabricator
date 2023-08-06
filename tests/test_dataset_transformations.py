@@ -2,10 +2,10 @@ import unittest
 
 from datasets import load_dataset
 
-from ai_dataset_generator.prompts import BasePrompt
-from ai_dataset_generator.dataset_transformations.question_answering import *
-from ai_dataset_generator.dataset_transformations.text_classification import *
-from ai_dataset_generator.dataset_transformations.token_classification import *
+from fabricator.prompts import BasePrompt
+from fabricator.dataset_transformations.question_answering import *
+from fabricator.dataset_transformations.text_classification import *
+from fabricator.dataset_transformations.token_classification import *
 
 
 class TestTransformationsTextClassification(unittest.TestCase):
@@ -199,4 +199,4 @@ class TestTransformationsQuestionAnswering(unittest.TestCase):
         dataset = preprocess_squad_format(self.dataset.select(range(50)))
         dataset = postprocess_squad_format(dataset)
         self.assertEqual(type(dataset[0]["answers"]), dict)
-        self.assertIn("start", dataset[0]["answers"])
+        self.assertIn("answer_start", dataset[0]["answers"])

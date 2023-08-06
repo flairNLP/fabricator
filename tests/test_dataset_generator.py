@@ -1,11 +1,10 @@
 import unittest
 
 from datasets import Dataset, load_dataset
-from haystack.nodes import PromptNode
 
-from ai_dataset_generator import DatasetGenerator
-from ai_dataset_generator.prompts import BasePrompt
-from ai_dataset_generator.dataset_transformations.text_classification import convert_label_ids_to_texts
+from fabricator import DatasetGenerator
+from fabricator.prompts import BasePrompt
+from fabricator.dataset_transformations.text_classification import convert_label_ids_to_texts
 
 
 class TestDatasetGenerator(unittest.TestCase):
@@ -67,7 +66,7 @@ class TestDatasetGenerator(unittest.TestCase):
             prompt_template=prompt,
             fewshot_dataset=self.text_classification_dataset,
             fewshot_examples_per_class=1,
-            fewshot_label_sampling_strategy="uniform",
+            fewshot_sampling_strategy="uniform",
             fewshot_sampling_column="label",
             max_prompt_calls=2,
             dummy_response="A dummy movie review."
@@ -95,7 +94,7 @@ class TestDatasetGenerator(unittest.TestCase):
             prompt_template=prompt,
             fewshot_dataset=self.text_classification_dataset,
             fewshot_examples_per_class=1,
-            fewshot_label_sampling_strategy="stratified",
+            fewshot_sampling_strategy="stratified",
             unlabeled_dataset=unlabeled_dataset,
             max_prompt_calls=2,
             dummy_response="A dummy movie review."
@@ -130,7 +129,7 @@ class TestDatasetGenerator(unittest.TestCase):
             prompt_template=prompt,
             fewshot_dataset=fewshot_dataset,
             fewshot_examples_per_class=2,  # Take both fewshot examples per prompt
-            fewshot_label_sampling_strategy=None,
+            fewshot_sampling_strategy=None,
             # Since we do not have a class label column, we can just set this to None
             # (default)
             unlabeled_dataset=unlabeled_dataset,
@@ -164,7 +163,7 @@ class TestDatasetGenerator(unittest.TestCase):
             fewshot_dataset=fewshot_dataset,
             fewshot_examples_per_class=1,
             fewshot_sampling_column="label",
-            fewshot_label_sampling_strategy="stratified",
+            fewshot_sampling_strategy="stratified",
             unlabeled_dataset=unlabeled_dataset,
             max_prompt_calls=2,
             return_unlabeled_dataset=True,
@@ -175,6 +174,116 @@ class TestDatasetGenerator(unittest.TestCase):
         self.assertEqual(generated_dataset.features["sentence1"].dtype, "string")
         self.assertEqual(generated_dataset.features["sentence2"].dtype, "string")
         self.assertEqual(generated_dataset.features["label"].dtype, "string")
+
+    def test_sampling_all_fewshot_examples(self):
+        """Test sampling all fewshot examples"""
+        prompt = BasePrompt(
+            task_description="Generate a short movie review.",
+        )
+
+        prompt_labels, fewshot_examples = self.generator._sample_fewshot_examples(
+            prompt_template=prompt,
+            fewshot_dataset=self.text_classification_dataset,
+            fewshot_sampling_strategy=None,
+            fewshot_examples_per_class=None,
+            fewshot_sampling_column=None,
+        )
+
+        self.assertEqual(prompt_labels, None)
+        self.assertEqual(len(fewshot_examples), 2)
+
+    def test_sampling_all_fewshot_examples_with_label_options(self):
+        """Test sampling all fewshot examples with label options"""
+        prompt = BasePrompt(
+            task_description="Generate a short movie review: {}.",
+            label_options=["positive", "negative"],
+        )
+
+        prompt_labels, fewshot_examples = self.generator._sample_fewshot_examples(
+            prompt_template=prompt,
+            fewshot_dataset=self.text_classification_dataset,
+            fewshot_sampling_strategy=None,
+            fewshot_examples_per_class=None,
+            fewshot_sampling_column=None,
+        )
+
+        prompt_text = prompt.task_description.format(prompt_labels)
+        self.assertIn("positive", prompt_text)
+        self.assertIn("negative", prompt_text)
+
+    def test_sampling_uniform_fewshot_examples(self):
+        """Test uniform sampling fewshot examples"""
+        prompt = BasePrompt(
+            task_description="Generate a short movie review: {}.",
+            label_options=["positive", "negative"],
+        )
+
+        prompt_labels, fewshot_examples = self.generator._sample_fewshot_examples(
+            prompt_template=prompt,
+            fewshot_dataset=self.text_classification_dataset,
+            fewshot_sampling_strategy="uniform",
+            fewshot_examples_per_class=1,
+            fewshot_sampling_column="label",
+        )
+
+        self.assertEqual(len(fewshot_examples), 1)
+        self.assertIn(prompt_labels, ["positive", "negative"])
+
+    def test_sampling_stratified_fewshot_examples(self):
+        """Test stratified sampling fewshot examples"""
+        larger_fewshot_dataset = Dataset.from_dict({
+            "text": ["This movie is great!", "This movie is bad!", "This movie is great!", "This movie is bad!"],
+            "label": ["positive", "negative", "positive", "negative"]
+        })
+
+        prompt = BasePrompt(
+            task_description="Generate a short movie review: {}.",
+            label_options=["positive", "negative"],
+        )
+
+        prompt_labels, fewshot_examples = self.generator._sample_fewshot_examples(
+            prompt_template=prompt,
+            fewshot_dataset=larger_fewshot_dataset,
+            fewshot_sampling_strategy="stratified",
+            fewshot_examples_per_class=1,
+            fewshot_sampling_column="label",
+        )
+
+        self.assertEqual(len(fewshot_examples), 2)
+        self.assertEqual(len(set(fewshot_examples["label"])), 2)
+        self.assertEqual(len(prompt_labels), 2)
+
+    def test_sampling_uniform_fewshot_examples_without_number_of_examples(self):
+        """Test failure of uniform sampling fewshot examples if attributes are missing"""
+        prompt = BasePrompt(
+            task_description="Generate a short movie review: {}.",
+            label_options=["positive", "negative"],
+        )
+
+        with self.assertRaises(KeyError):
+            prompt_labels, fewshot_examples = self.generator._sample_fewshot_examples(
+                prompt_template=prompt,
+                fewshot_dataset=self.text_classification_dataset,
+                fewshot_sampling_strategy="uniform",
+                fewshot_examples_per_class=None,
+                fewshot_sampling_column=None,
+            )
+
+    def test_sampling_uniform_fewshot_examples_with_number_of_examples_without_sampling_column(self):
+        """Test failure of uniform sampling fewshot examples if attributes are missing"""
+        prompt = BasePrompt(
+            task_description="Generate a short movie review: {}.",
+            label_options=["positive", "negative"],
+        )
+
+        with self.assertRaises(KeyError):
+            prompt_labels, fewshot_examples = self.generator._sample_fewshot_examples(
+                prompt_template=prompt,
+                fewshot_dataset=self.text_classification_dataset,
+                fewshot_sampling_strategy="uniform",
+                fewshot_examples_per_class=1,
+                fewshot_sampling_column=None,
+            )
 
     def test_dummy_response(self):
 

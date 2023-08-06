@@ -7,7 +7,7 @@ def requirements():
 
 
 setup(
-    name='ai-dataset-generator',
+    name='fabricator',
     version='0.1',
     author='Humboldt University Berlin, deepset GmbH',
     description='Generate datasets with large language models.',
