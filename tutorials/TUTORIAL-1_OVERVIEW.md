@@ -57,7 +57,7 @@ your prompt generates exactly one data point per prompt since the output will be
 ### Create a minimal prompt for generating text without fewshot examples
 
 ```python
-from ai_dataset_generator.prompts import BasePrompt
+from fabricator.prompts import BasePrompt
 
 prompt_template = BasePrompt(task_description="Generate movie reviews.")
 print(prompt_template.get_prompt_text())
@@ -75,7 +75,7 @@ options are a list of strings. When generating data, the `DatasetGenerator` clas
 one of the label options and insert it into the task description such that the generated dataset is balanced.
 
 ```python
-from ai_dataset_generator.prompts import BasePrompt
+from fabricator.prompts import BasePrompt
 
 label_options = ["positive", "negative"]
 prompt_template = BasePrompt(
@@ -109,7 +109,7 @@ fewshot dataset that have the same label as used in the task description as exem
 
 ```python
 from datasets import Dataset
-from ai_dataset_generator.prompts import BasePrompt
+from fabricator.prompts import BasePrompt
 
 label_options = ["positive", "negative"]
 
@@ -152,7 +152,7 @@ annotated by the LLM as illustrated in the previous example.
 
 ```python
 from datasets import Dataset
-from ai_dataset_generator.prompts import BasePrompt
+from fabricator.prompts import BasePrompt
 
 label_options = ["positive", "negative"]
 
@@ -208,7 +208,7 @@ frameworks such as `transformers`.
 
 ```python
 from datasets import Dataset
-from ai_dataset_generator import DatasetGenerator
+from fabricator import DatasetGenerator
 
 fewshot_examples = Dataset.from_dict({
     "text": ["This movie is great!", "This movie is bad!"],
@@ -225,6 +225,6 @@ generated_dataset = generator.generate(
     unlabeled_dataset=unlabeled_dataset,
     prompt_template=prompt_template,  # from above
     max_prompt_calls=5,  # max number of calls to the LLM
-    fewshot_examples_per_prompt=1,  # number of support examples per prompt
+    fewshot_examples_per_class=1,  # number of fewshot examples per class per prompt
 )
 ```

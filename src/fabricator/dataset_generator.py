@@ -18,7 +18,7 @@ from .utils import log_dir, create_timestamp_path
 
 
 class DatasetGenerator:
-    """The DatasetGenerator class is the main class of the ai_dataset_generator package.
+    """The DatasetGenerator class is the main class of the fabricator package.
     It generates datasets based on a prompt template. The main function is generate()."""
 
     def __init__(self, prompt_node: PromptNode, max_tries: int = 10):
@@ -52,8 +52,8 @@ class DatasetGenerator:
         self,
         prompt_template: BasePrompt,
         fewshot_dataset: Optional[Dataset] = None,
-        fewshot_examples_per_class: int = 1,
-        fewshot_label_sampling_strategy: Optional[str] = None,
+        fewshot_sampling_strategy: Optional[str] = None,
+        fewshot_examples_per_class: int = None,
         fewshot_sampling_column: Optional[str] = None,
         unlabeled_dataset: Optional[Dataset] = None,
         return_unlabeled_dataset: bool = False,
@@ -69,11 +69,13 @@ class DatasetGenerator:
         Args:
             prompt_template (BasePrompt): Prompt template to generate the dataset with.
             fewshot_dataset (Dataset): Support examples to generate the dataset from. Defaults to None.
+            fewshot_sampling_strategy (str, optional): Sampling strategy for support examples.
+                Defaults to None and means all fewshot examples are used or limited by number of
+                fewshot_examples_per_class.
+                "uniform" sampling strategy means that fewshot examples for a uniformly sampled label are used.
+                "stratified" sampling strategy means that fewshot examples uniformly selected from each label.
             fewshot_examples_per_class (int, optional): Number of support examples for a certain class per prompt.
-                Defaults to 1.
-            fewshot_label_sampling_strategy (str, optional): Sampling strategy for support examples. Defaults to
-                None. "uniform" sampling strategy means that one label is sampled and only fewshot examples for that
-                class are used. "stratified" sampling strategy means that all classes in support examples are used.
+                Defaults to None.
             fewshot_sampling_column (str, optional): Column to sample from. Defaults to None and function will try
                 to sample from the generate_data_for_column attribute of the prompt template.
             unlabeled_dataset (Optional[Dataset], optional): Unlabeled examples to annotate. Defaults to None.
@@ -91,7 +93,7 @@ class DatasetGenerator:
         if fewshot_dataset:
             self._assert_fewshot_dataset_matches_prompt(prompt_template, fewshot_dataset)
 
-        assert fewshot_label_sampling_strategy in [None, "uniform", "stratified"], \
+        assert fewshot_sampling_strategy in [None, "uniform", "stratified"], \
             "Sampling strategy must be 'uniform' or 'stratified'"
 
         if fewshot_dataset and not fewshot_sampling_column:
@@ -101,7 +103,7 @@ class DatasetGenerator:
             prompt_template,
             fewshot_dataset,
             fewshot_examples_per_class,
-            fewshot_label_sampling_strategy,
+            fewshot_sampling_strategy,
             fewshot_sampling_column,
             unlabeled_dataset,
             return_unlabeled_dataset,
@@ -162,7 +164,7 @@ class DatasetGenerator:
         prompt_template: BasePrompt,
         fewshot_dataset: Dataset,
         fewshot_examples_per_class: int,
-        fewshot_label_sampling_strategy: str,
+        fewshot_sampling_strategy: str,
         fewshot_sampling_column: str,
         unlabeled_dataset: Dataset,
         return_unlabeled_dataset: bool,
@@ -192,11 +194,13 @@ class DatasetGenerator:
             prompt_labels = None
 
             if prompt_template.label_options:
-                prompt_labels = choice(prompt_template.label_options, 1)[0]
+                # At some point: how can we do label-conditioned generation without fewshot examples? Currently it
+                # require a second parameter for sample from label options and not from fewshot examples
+                prompt_labels = prompt_template.label_options
 
             if fewshot_dataset:
                 prompt_labels, fewshot_examples = self._sample_fewshot_examples(
-                    prompt_template, fewshot_dataset, fewshot_examples_per_class, fewshot_label_sampling_strategy,
+                    prompt_template, fewshot_dataset, fewshot_sampling_strategy, fewshot_examples_per_class,
                     fewshot_sampling_column
                 )
 
@@ -313,19 +317,20 @@ class DatasetGenerator:
 
     @staticmethod
     def _sample_fewshot_examples(
-            prompt_template: BasePrompt,
-            fewshot_dataset: Dataset,
-            fewshot_examples_per_class: int,
-            fewshot_label_sampling_strategy: str,
-            fewshot_sampling_column: str
+        prompt_template: BasePrompt,
+        fewshot_dataset: Dataset,
+        fewshot_sampling_strategy: str,
+        fewshot_examples_per_class: int,
+        fewshot_sampling_column: str
     ) -> Tuple[Union[List[str], str], Dataset]:
-        if fewshot_label_sampling_strategy == "uniform":
+
+        if fewshot_sampling_strategy == "uniform":
             prompt_labels = choice(prompt_template.label_options, 1)[0]
             fewshot_examples = fewshot_dataset.filter(
                 lambda example: example[fewshot_sampling_column] == prompt_labels
             ).shuffle().select(range(fewshot_examples_per_class))
 
-        elif fewshot_label_sampling_strategy == "stratified":
+        elif fewshot_sampling_strategy == "stratified":
             prompt_labels = prompt_template.label_options
             fewshot_examples = single_label_stratified_sample(
                 fewshot_dataset,
@@ -335,7 +340,10 @@ class DatasetGenerator:
 
         else:
             prompt_labels = prompt_template.label_options if prompt_template.label_options else None
-            fewshot_examples = fewshot_dataset.shuffle().select(range(fewshot_examples_per_class))
+            if fewshot_examples_per_class:
+                fewshot_examples = fewshot_dataset.shuffle().select(range(fewshot_examples_per_class))
+            else:
+                fewshot_examples = fewshot_dataset.shuffle()
 
         assert len(fewshot_examples) > 0, f"Could not find any fewshot examples for label(s) {prompt_labels}." \
                                           f"Ensure that labels of fewshot examples match the label_options " \

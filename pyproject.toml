@@ -6,9 +6,9 @@ max-line-length = 119
 
 [tool.pylint.MASTER]
 ignore-patterns = '''test_.*\.py,
-    examples/.*\.py,
     setup.py
 '''
+ignore-paths = [ "^paper_experiments/.*$"]
 
 [tool.pylint."MESSAGE CONTROL"]
 disable = '''logging-fstring-interpolation,
