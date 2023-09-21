@@ -11,7 +11,7 @@
 <hr>
 
 [Installation](#installation) | [Basic Concepts](#basic-concepts) | [Examples](#examples) | [Tutorials](tutorials/TUTORIAL-1_OVERVIEW.md) | 
-Paper | [Citation](#citation)
+[Paper](https://arxiv.org/abs/2309.09582) | [Citation](#citation)
 
 <hr>
 </div>
