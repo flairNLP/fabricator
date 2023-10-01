@@ -20,7 +20,7 @@
 
 This repository:
 
-- is <b>a easy-to-use open-source library</b> to generate datasets with large language models. If you want to train
+- is <b>an easy-to-use open-source library</b> to generate datasets with large language models. If you want to train
 a model on a specific domain / label distribution / downstream task, you can use this framework to generate
 a dataset for it.
 - <b>builds on top of deepset's haystack and huggingface's datasets</b> libraries. Thus, we support a wide range 
