@@ -16,6 +16,15 @@
 <hr>
 </div>
 
+## News
+
+- **[10/23]** Our paper got accepted at EMNLP 2023. You can find the preprint [here](https://arxiv.org/abs/2309.09582). You can find the experimental scripts under release v0.1.0.
+- **[09/23]** Support for `gpt-3.5-turbo-instruct` added in the new [Haystack](https://github.com/deepset-ai/haystack) release!
+- **[08/23]** Added several experimental scripts to investigate the generation and annotation ability of `gpt-3.5-turbo` on various downstream tasks + the influence of few-shot examples on the performance for different downstream tasks.
+- **[07/23]** Refactorings of majors classes - you can now simply use our BasePrompt class to create your own customized prompts for every downstream task!
+- **[07/23]** Added dataset transformations for token classification to prompt LLMs with textual spans rather than with list of tags.
+- **[06/23]** Initial version of fabricator supporting text classification and question answering tasks.
+
 ## Overview
 
 This repository:
