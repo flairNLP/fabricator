@@ -1,6 +1,6 @@
-# Tutorial 3: Generate advanced datasets
+# Tutorial 3: Advanced Dataset Generation
 
-## Customize prompts
+## Customizing Prompts
 
 Sometimes, you want to customize your prompt to your specific needs. For example, you might want to add a custom 
 formatting template (the default takes the column names of the dataset):
@@ -43,13 +43,12 @@ Movie Review: {text}
 Sentiment: 
 ```
 
-## Infer prompt from dataset
+## Inferring the Prompt rom Dataset Info
 
 Huggingface Dataset objects provide the possibility to infer a prompt from the dataset. This can be achieved by using
-the `infer_prompt_from_dataset` function from the `ai_dataset_generator.prompts` module. This function takes a dataset
+the `infer_prompt_from_dataset` function. This function takes a dataset
 as input and returns a `BasePrompt` object. The `BasePrompt` object contains the task description, the label options
-and the respective columns which can be used to generate a dataset with the `DatasetGenerator` class. The default 
-assignment is that data is going to be generated for the label column specified in the `task_template`.
+and the respective columns which can be used to generate a dataset with the `DatasetGenerator` class.
 
 ```python
 from datasets import load_dataset
@@ -90,7 +89,7 @@ extractive question answering:
 from datasets import load_dataset
 from fabricator.prompts import infer_prompt_from_dataset
 
-dataset = load_dataset("imdb", split="train")
+dataset = load_dataset("squad_v2", split="train")
 prompt = infer_prompt_from_dataset(dataset)
 
 print(prompt.get_prompt_text() + "\n---")
@@ -123,10 +122,10 @@ answers:
 
 ## Preprocess datasets
 
-The previous example emphasized how easy prompts can be generated using huggingface Datasets. However,
-there is a potential mismatch between label names and label IDs in the fewshot data points
-or structured answers as for the example of SQuAD. In order to best utilize the LLM, datasets will often
-require some sort of preprocessing.
+In the previous example, we highlighted the simplicity of generating prompts using Hugging Face Datasets information. 
+However, for optimal utilization of LLMs in generating text, it's essential to incorporate label names instead of IDs
+for text classification. Similarly, for question answering tasks, plain substrings are preferred over JSON-formatted 
+strings. We'll elaborate on these limitations in the following example.
 
 ```text
 Classify the following texts exactly into one of the following categories: **neg, pos**.
@@ -143,15 +142,12 @@ question: What term characterizes the intersection of the rites with the Roman C
 answers: **{'text': ['full union'], 'answer_start': [104]}**
 ```
 
-To do so, we provide a range of preprocessing functions for downstream tasks.
+To overcome this, we provide a range of preprocessing functions for various downstream tasks.
 
 ### Text Classification
 
-The `convert_label_ids_to_texts` function transform your text classification dataset with label IDs into textual
-labels. The default will be the label names specified in the features column. You can also directly return the label
-options if you want to create a custom prompt from `BasePrompt` class. In the example, we only
-return them for logging since we use our `infer_prompt_from_dataset` method which automatically
-uses the label names specified in the dataset.
+The `convert_label_ids_to_texts` function transforms your text classification dataset with label IDs into textual
+labels. The default will be the label names specified in the features column.
 
 ```python
 from datasets import load_dataset
@@ -208,9 +204,7 @@ text: {text}
 label: 
 ```
 
-During the dataset generation we expect the model to generate the labels in the explicitly defined label options but
-do not filter if this is not the case. We observed in our experiments that this does not occur if the prompt is precise
-and consistent. Once the dataset is generated, one can easily convert the string labels back to label IDs by
+Once the dataset is generated, one can easily convert the string labels back to label IDs by
 using huggingface's `class_encode_labels` function.
 
 ```python
@@ -222,23 +216,27 @@ print("Features: " + str(dataset.features["label"]))
 Which yields:
 
 ```text
-Labels: [0, 0, 0, 0, 0]
+Labels: [0, 1, 1, 0, 0]
 Features: ClassLabel(names=['negative', 'positive'], id=None)
 ```
 
+<ins>Note:</ins> While generating the dataset, the model is supposed to assign labels based on the specific options 
+provided. However, we do not filter the data if it doesn't adhere to these predefined labels. 
+Therefore, it's important to double-check if the annotations match the expected label options.
+If they don't, you should make corrections accordingly.
+
 ### Question Answering (Extractive)
 
-For question answering, we provide two functions to preprocess and postprocess the dataset. The preprocessing function
-will convert datasets in SQuAD-format to a flat format such that the inputs to the LLM will be strings.
-The postprocessing function will convert the predictions back to the SQuAD-format by calculating the answer 
-start and log if this answer can't be found in the context or if the answer occurs multiple times.
+In question answering tasks, we offer two functions to handle dataset processing: preprocessing and postprocessing. 
+The preprocessing function is responsible for transforming datasets from SQuAD format into flat strings. 
+On the other hand, the postprocessing function reverses this process by converting flat predictions back into 
+SQuAD format. It achieves this by determining the starting point of the answer and checking if the answer cannot be 
+found in the given context or if it occurs multiple times.
 
 ```python
 from datasets import load_dataset
 from fabricator.prompts import infer_prompt_from_dataset
-from fabricator.dataset_transformations.question_answering import preprocess_squad_format,
-
-postprocess_squad_format
+from fabricator.dataset_transformations.question_answering import preprocess_squad_format, postprocess_squad_format
 
 dataset = load_dataset("squad_v2", split="train")
 prompt = infer_prompt_from_dataset(dataset)
@@ -269,8 +267,8 @@ answers:
 
 ### Named Entity Recognition
 
-If you want to generate a dataset for named entity recognition without any preprocesing, the prompt would be difficult
-to understand for the LLM.
+If you attempt to create a dataset for named entity recognition without any preprocessing, the prompt might be 
+challenging for the language model to understand.
 
 ```python
 from datasets import load_dataset
@@ -299,8 +297,9 @@ tokens: {tokens}
 ner_tags: 
 ```
 
-To make the prompt more understandable, we can preprocess the dataset such that the labels are converted to spans.
-This can be done by using the `convert_token_labels_to_spans` function. The function will also return the label options
+To enhance prompt clarity, we can preprocess the dataset by converting labels into spans. This conversion can be 
+accomplished using the `convert_token_labels_to_spans` function. Additionally, the function will provide the 
+available label options:
 
 ```python
 from datasets import load_dataset
@@ -330,7 +329,7 @@ tokens: {tokens}
 ner_tags: 
 ```
 
-As in text classification, we can also specfiy more semantically precise labels with the `expanded_label_mapping`:
+As in text classification, we can also specify more semantically precise labels with the `expanded_label_mapping`:
 
 ```python
 expanded_label_mapping = {
@@ -535,71 +534,4 @@ generated_dataset, original_dataset = generator.generate(
 generated_dataset = generated_dataset.class_encode_column("label")
 
 generated_dataset.push_to_hub("your-first-generated-dataset")
-```
-
-### Token classification
-Note: Token classification is currently still in development and often yields instable results. In particular the 
-conversion between spans and token labels welcomes contributions for a more stable implementation.
-
-```python
-import os
-from datasets import load_dataset
-from haystack.nodes import PromptNode
-from fabricator import DatasetGenerator
-from fabricator.prompts import BasePrompt
-from fabricator.dataset_transformations import convert_token_labels_to_spans, convert_spans_to_token_labels
-
-dataset = load_dataset("conll2003", split="train")
-expanded_label_mapping = {
-    0: "O",
-    1: "B-person",
-    2: "I-person",
-    3: "B-location",
-    4: "I-location",
-    5: "B-organization",
-    6: "I-organization",
-    7: "B-miscellaneous",
-    8: "I-miscellaneous",
-}
-dataset, label_options = convert_token_labels_to_spans(dataset, "tokens", "ner_tags", expanded_label_mapping)
-
-fewshot_dataset = dataset.select(range(10))
-unlabeled_dataset = dataset.select(range(10, 20))
-
-prompt = BasePrompt(
-    task_description="Annotate each token with its named entity label: {}.",
-    generate_data_for_column="ner_tags",
-    fewshot_example_columns="tokens",
-    label_options=list(expanded_label_mapping.values()),
-)
-
-prompt_node = PromptNode(
-    model_name_or_path="gpt-3.5-turbo",
-    api_key=os.environ.get("OPENAI_API_KEY"),
-    max_length=100,
-)
-
-generator = DatasetGenerator(prompt_node)
-generated_dataset, original_dataset = generator.generate(
-    prompt_template=prompt,
-    fewshot_dataset=fewshot_dataset,
-    fewshot_examples_per_class=3,  # Take 3 fewshot examples (for token-level class we do not sample per class)
-    unlabeled_dataset=unlabeled_dataset,
-    max_prompt_calls=10,
-    return_unlabeled_dataset=True,
-)
-
-generated_dataset = convert_spans_to_token_labels(
-    dataset=generated_dataset,
-    token_column="tokens",
-    label_column="ner_tags",
-    id2label=expanded_label_mapping
-)
-
-original_dataset = convert_spans_to_token_labels(
-    dataset=original_dataset,
-    token_column="tokens",
-    label_column="ner_tags",
-    id2label=expanded_label_mapping
-)
 ```
