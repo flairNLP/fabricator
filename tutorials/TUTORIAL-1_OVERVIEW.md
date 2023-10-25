@@ -1,11 +1,34 @@
-# Tutorial 1: Understanding the modules
+# Tutorial 1: fabricator Introduction
 
-## General
+### Recipe for Dataset Generation 📚
+When starting from scratch, to generate an arbitrary dataset, you need to implement some instance of:
 
-The modules are the main building blocks of the application. This tutorial will explain the basic concepts of the 
-modules and how to use them.
+- **_Datasets_**: For few-shot examples and final storage of (pair-wise) data to train a small PLM.
+- **_LLMs_**: To annotate existing, unlabeled datasets or generate completely new ones.
+- **_Prompts_**: To format the provided inputs (task description, few-shot examples, etc.) to prompt the LLM.
+- **_Orchestrator_**: To aligns all components and steer the generation process.
 
-## Datasets
+### Creating a workflow from scratch requires careful consideration of intricate details 👨‍🍳
+The following figure illustrates the typical generation workflow when using large language models as teachers for
+smaller pre-trained language models (PLMs) like BERT. Establishing this workflow demands attention to implementation
+details and requires boilerplate. Further, the setup process may vary based on a particular LLM or dataset format.
+
+<figure>
+    <img src="../resources/generation_workflow.png", alt="Generation Worklow">
+    <figcaption>The generation workflow when using LLMs as a teacher to smaller PLMs such as BERT.</figcaption>
+</figure>
+
+### Efficiently generate datasets with fabricator 🍜 
+
+With fabricator, you simply need to define your generation settings,
+e.g. how many few-shot examples to include per prompt, how to sample few-shot instances from a pool of available 
+examples, or which LLM to use. In addition, everything is built on top of Hugging Face's 
+[datasets](https://github.com/huggingface/datasets) library that you can directly 
+incorporate the generated datasets in your usual training workflows or share them via the Hugging Face hub.
+
+## Fabricator Compoments
+
+### Datasets
 
 Datasets are build upon the `Dataset` class of the huggingface datasets library. They are used to store the data in a 
 tabular format and provide a convenient way to access the data. The generated datasets will always be in that format such
@@ -25,10 +48,10 @@ dataset = load_dataset("json", data_files="path/to/file.jsonl")
 dataset.push_to_hub("my-dataset")
 ```
 
-## LLMs
-We use haystack's `PromptNode` to generate the data. The PromptNode is a wrapper for multiple LLMs such as the ones
+### LLMs
+We simply use haystack's `PromptNode` as our LLM interface. The PromptNode is a wrapper for multiple LLMs such as the ones
 from OpenAI or all available models on the huggingface hub. You can set all generation-related parameters such as 
-temperature, top_k, maximum generation length via the PromptNode.
+temperature, top_k, maximum generation length via the PromptNode (see also the [documentation](https://docs.haystack.deepset.ai/docs/prompt_node)).
 
 ```python
 import os
@@ -44,35 +67,30 @@ prompt_node = PromptNode(
 )
 ```
 
-## Prompt Templates
+### Prompts
 
-Prompt templates are used to generate the prompts for the LLMs. This class is highly flexible and is used to define (i)
-the task description (what should the LLM generate), (ii) label options to choose from when i.e. classiyfing text and 
-(iii) the format of optional fewshot examples. The prompt template instance will be passed to the `DatasetGenerator` 
-class and, if fewshot examples are passed, create the final prompts based on the columns present in the dataset.
+The `BasePrompt` class is used to format the prompts for the LLMs. This class is highly flexible and thus can be 
+adapted to various settings:
+- define a `task_description` (e.g. "Generate a [_label_] movie review.") to generate data for certain class, e.g. a movie review for the label "positive".
+- include pre-defined `label_options` (e.g. "Annotate the following review with one of the followings labels: positive, negative.") when annotating unlabeled datasets.
+- customize format of fewshot examples inside the prompt
 
-<ins>Note:</ins> Since the `DatasetGenerator` class parses the generated output directly into the target dataset format: Ensure that
-your prompt generates exactly one data point per prompt since the output will be taken as is.
-
-### Create a minimal prompt for generating text without fewshot examples
+#### Prompt for generating plain text
 
 ```python
 from fabricator.prompts import BasePrompt
 
-prompt_template = BasePrompt(task_description="Generate movie reviews.")
+prompt_template = BasePrompt(task_description="Generate a movie review.")
 print(prompt_template.get_prompt_text())
 ```
-Output:
+Prompt during generation:
 ```console
-Generate movies reviews.
+Generate a movie reviews.
 
 text: 
 ```
 
-### Create a prompt with label options
-Label options are insert into a formattable task description to guide the LLM to generate the desired output. The label 
-options are a list of strings. When generating data, the `DatasetGenerator` class will uniformly sample
-one of the label options and insert it into the task description such that the generated dataset is balanced.
+#### Prompt for label-conditioned generation with label options
 
 ```python
 from fabricator.prompts import BasePrompt
@@ -82,30 +100,25 @@ prompt_template = BasePrompt(
     task_description="Generate a {} movie review.",
     label_options=label_options,
 )
-
-for label in label_options:
-    print(prompt_template.get_prompt_text(label) + "\n---\n")
 ```
-Output:
+
+Label-conditioned prompts during generation:
 ```console
-Generate a positive movie reviews.
+Generate a positive movie review.
 
 text:
 ---
 
-Generate a negative movie reviews.
+Generate a negative movie review.
 
 text: 
 ---
 ```
 
-### Create a prompt that generates movie reviews with fewshot examples
+<ins>Note:</ins> You can define in the orchestrator class the desired distribution of labels, e.g. uniformly 
+sampling from both labels in the examples in each iteration.
 
-With fewshot examples, we are able to create a additional training examples for a tiny dataset. The 
-`generate_data_for_column` variable defines the column that should be generated by the LLM and can be any column from 
-the dataset. As previously introduced, the `DatasetGenerator` will create a balanced dataset by uniformly sampling from 
-the label options. At runtime, when generating additional data, the `DatasetGenerator` samples data points from the 
-fewshot dataset that have the same label as used in the task description as exemplarily shown in the output.
+#### Prompt with few-shot examples
 
 ```python
 from datasets import Dataset
@@ -123,12 +136,9 @@ prompt_template = BasePrompt(
     label_options=label_options,
     generate_data_for_column="text",
 )
-
-for idx, label in enumerate(label_options):
-    print(prompt_template.get_prompt_text(label, fewshot_examples.select([idx])) + "\n---\n")
 ```
 
-Output:
+Prompts with few-shot examples during generation:
 ```console
 Generate a positive movie review.
 
@@ -145,86 +155,27 @@ text:
 ---
 ```
 
-### Create a prompt that annotates unlabeled movie reviews with fewshot examples
-If you want to annotate unlabeled data, you can use the `fewshot_example_columns` attribute to define the columns that
-should be used as fewshot examples. The `generate_data_for_column` variable now defines the column that should be 
-annotated by the LLM as illustrated in the previous example.
+<ins>Note:</ins> The `generate_data_for_column` attribute defines the column of the few-shot dataset for which additional data is generated.
+As previously shown, the orchestrator will sample a label and includes a matching few-shot example.
+
+### DatasetGenerator
+
+The `DatasetGenerator` class is fabricator's orchestrator. It takes a `Dataset`, a `PromptNode` and a 
+`BasePrompt` as inputs and generates the final dataset based on these instances. The `generate` method returns a `Dataset` object that can be used with standard machine learning
+frameworks such as [flair](https://github.com/flairNLP/flair), deepset's [haystack](https://github.com/deepset-ai/haystack), or Hugging Face's [transformers](https://github.com/huggingface/transformers).
 
 ```python
-from datasets import Dataset
-from fabricator.prompts import BasePrompt
+from fabricator import BasePrompt, DatasetGenerator
 
-label_options = ["positive", "negative"]
+prompt_template = BasePrompt(task_description="Generate a movie review.")
 
-fewshot_examples = Dataset.from_dict({
-    "text": ["This movie is great!", "This movie is bad!"],
-    "label": label_options
-})
-
-prompt_template = BasePrompt(
-    task_description="Annotate movie reviews as either: {}.",
-    label_options=["positive", "negative"],
-    generate_data_for_column="label",
-    fewshot_example_columns="text",
-)
-
-print(prompt_template.get_prompt_text(label_options, fewshot_examples) + "\n---")
-
-invocation_context = {"text": "This movie was a blast!"}
-print(prompt_template.get_prompt_text(label_options, fewshot_examples).format(**invocation_context))
-```
-
-Output:
-```console
-Annotate movie reviews as either: positive, negative.
-
-text: This movie is great!
-label: positive
-
-text: This movie is bad!
-label: negative
-
-text: {text}
-label: 
----
-Annotate movie reviews as either: positive, negative.
-
-text: This movie is great!
-label: positive
-
-text: This movie is bad!
-label: negative
-
-text: This movie was a blast!
-label: 
-```
-
-## DatasetGenerator
-
-The `DatasetGenerator` class is used to generate the final dataset. It takes a `Dataset`, a `PromptNode` and a 
-`BasePrompt` as inputs and generates the final dataset based on the prompt template and the optionally provided
-fewshot examples. The `generate` method returns a `Dataset` object that can be used with standard machine learning
-frameworks such as `transformers`.
-
-```python
-from datasets import Dataset
-from fabricator import DatasetGenerator
-
-fewshot_examples = Dataset.from_dict({
-    "text": ["This movie is great!", "This movie is bad!"],
-    "label": ["positive", "negative"]
-})
-
-unlabeled_dataset = Dataset.from_dict({
-    "text": ["This movie was okay!", "This movie is better than I expected!"],
-})
+prompt_node = PromptNode("google/flan-t5-base")
 
 generator = DatasetGenerator(prompt_node)
 generated_dataset = generator.generate(
-    fewshot_dataset=fewshot_examples,
-    unlabeled_dataset=unlabeled_dataset,
-    prompt_template=prompt_template,  # from above
-    max_prompt_calls=5,  # max number of calls to the LLM
-    fewshot_examples_per_class=1,  # number of fewshot examples per class per prompt
+    prompt_template=prompt,
+    max_prompt_calls=10,
 )
 ```
+
+In the following [tutorial](TUTORIAL-2_SIMPLE-GENERATION.md), we introduce the different generation processes covered by fabricator.
