@@ -1,6 +1,6 @@
-# Tutorial 3: Generate advanced datasets
+# Tutorial 3: Advanced Dataset Generation
 
-## Customize prompts
+## Customizing Prompts
 
 Sometimes, you want to customize your prompt to your specific needs. For example, you might want to add a custom 
 formatting template (the default takes the column names of the dataset):
@@ -43,13 +43,12 @@ Movie Review: {text}
 Sentiment: 
 ```
 
-## Infer prompt from dataset
+## Inferring the prompt from dataset info
 
 Huggingface Dataset objects provide the possibility to infer a prompt from the dataset. This can be achieved by using
-the `infer_prompt_from_dataset` function from the `ai_dataset_generator.prompts` module. This function takes a dataset
+the `infer_prompt_from_dataset` function. This function takes a dataset
 as input and returns a `BasePrompt` object. The `BasePrompt` object contains the task description, the label options
-and the respective columns which can be used to generate a dataset with the `DatasetGenerator` class. The default 
-assignment is that data is going to be generated for the label column specified in the `task_template`.
+and the respective columns which can be used to generate a dataset with the `DatasetGenerator` class.
 
 ```python
 from datasets import load_dataset
@@ -90,7 +89,7 @@ extractive question answering:
 from datasets import load_dataset
 from fabricator.prompts import infer_prompt_from_dataset
 
-dataset = load_dataset("imdb", split="train")
+dataset = load_dataset("squad_v2", split="train")
 prompt = infer_prompt_from_dataset(dataset)
 
 print(prompt.get_prompt_text() + "\n---")
@@ -123,10 +122,10 @@ answers:
 
 ## Preprocess datasets
 
-The previous example emphasized how easy prompts can be generated using huggingface Datasets. However,
-there is a potential mismatch between label names and label IDs in the fewshot data points
-or structured answers as for the example of SQuAD. In order to best utilize the LLM, datasets will often
-require some sort of preprocessing.
+In the previous example, we highlighted the simplicity of generating prompts using Hugging Face Datasets information. 
+However, for optimal utilization of LLMs in generating text, it's essential to incorporate label names instead of IDs
+for text classification. Similarly, for question answering tasks, plain substrings are preferred over JSON-formatted 
+strings. We'll elaborate on these limitations in the following example.
 
 ```text
 Classify the following texts exactly into one of the following categories: **neg, pos**.

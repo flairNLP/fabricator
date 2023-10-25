@@ -1,6 +1,8 @@
-# Tutorial 1: fabricator Introduction
+# Tutorial 1: Fabricator Introduction
 
-### Recipe for Dataset Generation 📚
+## 1) Dataset Generation
+
+### 1.1) Recipe for Dataset Generation 📚
 When starting from scratch, to generate an arbitrary dataset, you need to implement some instance of:
 
 - **_Datasets_**: For few-shot examples and final storage of (pair-wise) data to train a small PLM.
@@ -8,7 +10,7 @@ When starting from scratch, to generate an arbitrary dataset, you need to implem
 - **_Prompts_**: To format the provided inputs (task description, few-shot examples, etc.) to prompt the LLM.
 - **_Orchestrator_**: To aligns all components and steer the generation process.
 
-### Creating a workflow from scratch requires careful consideration of intricate details 👨‍🍳
+### 1.2) Creating a Workflow From Scratch Requires Careful Consideration of Intricate Details 👨‍🍳
 The following figure illustrates the typical generation workflow when using large language models as teachers for
 smaller pre-trained language models (PLMs) like BERT. Establishing this workflow demands attention to implementation
 details and requires boilerplate. Further, the setup process may vary based on a particular LLM or dataset format.
@@ -18,7 +20,7 @@ details and requires boilerplate. Further, the setup process may vary based on a
     <figcaption>The generation workflow when using LLMs as a teacher to smaller PLMs such as BERT.</figcaption>
 </figure>
 
-### Efficiently generate datasets with fabricator 🍜 
+### 1.3) Efficiently Generate Datasets With Fabricator 🍜 
 
 With fabricator, you simply need to define your generation settings,
 e.g. how many few-shot examples to include per prompt, how to sample few-shot instances from a pool of available 
@@ -26,9 +28,9 @@ examples, or which LLM to use. In addition, everything is built on top of Huggin
 [datasets](https://github.com/huggingface/datasets) library that you can directly 
 incorporate the generated datasets in your usual training workflows or share them via the Hugging Face hub.
 
-## Fabricator Compoments
+## 2) Fabricator Compoments
 
-### Datasets
+### 2.1) Datasets
 
 Datasets are build upon the `Dataset` class of the huggingface datasets library. They are used to store the data in a 
 tabular format and provide a convenient way to access the data. The generated datasets will always be in that format such
@@ -48,7 +50,7 @@ dataset = load_dataset("json", data_files="path/to/file.jsonl")
 dataset.push_to_hub("my-dataset")
 ```
 
-### LLMs
+### 2.2) LLMs
 We simply use haystack's `PromptNode` as our LLM interface. The PromptNode is a wrapper for multiple LLMs such as the ones
 from OpenAI or all available models on the huggingface hub. You can set all generation-related parameters such as 
 temperature, top_k, maximum generation length via the PromptNode (see also the [documentation](https://docs.haystack.deepset.ai/docs/prompt_node)).
@@ -67,7 +69,7 @@ prompt_node = PromptNode(
 )
 ```
 
-### Prompts
+### 2.3) Prompts
 
 The `BasePrompt` class is used to format the prompts for the LLMs. This class is highly flexible and thus can be 
 adapted to various settings:
@@ -158,7 +160,7 @@ text:
 <ins>Note:</ins> The `generate_data_for_column` attribute defines the column of the few-shot dataset for which additional data is generated.
 As previously shown, the orchestrator will sample a label and includes a matching few-shot example.
 
-### DatasetGenerator
+### 2.4) DatasetGenerator
 
 The `DatasetGenerator` class is fabricator's orchestrator. It takes a `Dataset`, a `PromptNode` and a 
 `BasePrompt` as inputs and generates the final dataset based on these instances. The `generate` method returns a `Dataset` object that can be used with standard machine learning
@@ -178,4 +180,4 @@ generated_dataset = generator.generate(
 )
 ```
 
-In the following [tutorial](TUTORIAL-2_SIMPLE-GENERATION.md), we introduce the different generation processes covered by fabricator.
+In the following [tutorial](TUTORIAL-2_GENERATION_WORKFLOWS.md), we introduce the different generation processes covered by fabricator.
