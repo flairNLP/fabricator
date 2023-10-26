@@ -7,7 +7,7 @@ def requirements():
 
 
 setup(
-    name='fabricator',
+    name='fabricator-ai',
     version='0.1.1',
     author='Humboldt University Berlin, deepset GmbH',
     author_email="goldejon@informatik.hu-berlin.de",

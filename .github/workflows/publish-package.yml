@@ -1,8 +1,6 @@
-name: Publish Release PyPI
+name: Publish Release to PyPI
 
-on:
-  release:
-    types: [published]
+on: push
 
 jobs:
   build:
@@ -14,7 +12,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.10"
+        python-version: "3.x"
     - name: Install pypa/build
       run: >-
         python3 -m
@@ -31,7 +29,7 @@ jobs:
 
   publish-to-pypi:
     name: >-
-      Publish fabricator Release to PyPI
+      Publish Release to PyPI
     if: startsWith(github.ref, 'refs/tags/')
     needs:
       - build
@@ -39,6 +37,9 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/p/fabricator-ai
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Download all the dists
         uses: actions/download-artifact@v3
@@ -47,9 +48,6 @@ jobs:
           path: dist/
       - name: Publish distribution 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.TESTPYPI_TOKEN }}
 
   github-release:
     name: >-
@@ -90,3 +88,28 @@ jobs:
           gh release upload
           '${{ github.ref_name }}' dist/**
           --repo '${{ github.repository }}'
+
+  publish-to-testpypi:
+    name: Publish distribution to TestPyPI
+    needs:
+      - build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/fabricator-ai
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v3
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Publish distribution to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
