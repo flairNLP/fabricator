@@ -1,3 +1,4 @@
+from pathlib import Path
 from setuptools import setup, find_packages
 
 
@@ -12,11 +13,8 @@ setup(
     author='Humboldt University Berlin, deepset GmbH',
     author_email="goldejon@informatik.hu-berlin.de",
     description='Conveniently generating datasets with large language models.',
-    long_description="If you require textual datasets for specific tasks, you can utilize large language models "
-                     "that possess immense generation capability. fabricator enables you to conveniently create "
-                     "or annotate datasets to fine-tune your custom model. fabricator is constructed on "
-                     "deepset's haystack and huggingface's datasets libraries, to seamlessly integrate "
-                     "into existing NLP frameworks.",
+    long_description=Path("README.md").read_text(encoding="utf-8"),
+    long_description_content_type="text/markdown",
     package_dir={"": "src"},
     packages=find_packages("src"),
     license="Apache 2.0",
