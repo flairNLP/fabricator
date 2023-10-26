@@ -3,7 +3,7 @@
 
 <p align="center">A flexible open-source framework to generate datasets with large language models.</p>
 <p align="center">
-<img alt="version" src="https://img.shields.io/badge/version-0.1-green">
+<img alt="version" src="https://img.shields.io/badge/version-0.2.0-green">
 <img alt="python" src="https://img.shields.io/badge/python-3.10-blue">
 <img alt="Static Badge" src="https://img.shields.io/badge/license-apache2.0-green">
 </p>
