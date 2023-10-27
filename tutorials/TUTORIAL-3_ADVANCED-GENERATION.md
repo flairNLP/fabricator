@@ -307,7 +307,7 @@ from fabricator.prompts import BasePrompt
 from fabricator.dataset_transformations import convert_token_labels_to_spans
 
 dataset = load_dataset("conll2003", split="train")
-dataset, label_options = convert_token_labels_to_spans(dataset, "tokens", "ner_tags")
+dataset, label_options = convert_token_labels_to_spans(dataset, "tokens", "ner_tags", return_label_options=True)
 prompt = BasePrompt(
     task_description="Annotate each token with its named entity label: {}.",
     generate_data_for_column="ner_tags",
@@ -322,8 +322,9 @@ Output:
 Annotate each token with its named entity label: MISC, ORG, PER, LOC.
 
 tokens: EU rejects German call to boycott British lamb . 
-ner_tags: ORG -> EU
-MISC -> German, British
+ner_tags: EU is ORG entity.
+German is MISC entity.
+British is MISC entity.
 
 tokens: {tokens}
 ner_tags: 
@@ -348,7 +349,8 @@ dataset, label_options = convert_token_labels_to_spans(
     dataset=dataset,
     token_column="tokens",
     label_column="ner_tags",
-    expanded_label_mapping=expanded_label_mapping
+    expanded_label_mapping=expanded_label_mapping,
+    return_label_mapping=True
 )
 ```
 
@@ -358,8 +360,9 @@ Output:
 Annotate each token with its named entity label: organization, person, location, miscellaneous.
 
 tokens: EU rejects German call to boycott British lamb . 
-ner_tags: location -> EU
-miscellaneous -> German, British
+ner_tags: EU is organization entity.
+German is miscellaneous entity.
+British is miscellaneous entity.
 
 tokens: {tokens}
 ner_tags: 

@@ -83,22 +83,19 @@ class TestTransformationsTokenClassification(unittest.TestCase):
     """Testcase for TokenLabelTransformations"""
 
     def setUp(self) -> None:
-        self.dataset = load_dataset("conll2003", split="train")
+        self.dataset = load_dataset("conll2003", split="train").select(range(150))
 
     def test_bio_tokens_to_spans(self):
         """Test transformation output only (BIO to spans)"""
         dataset, label_options = convert_token_labels_to_spans(
-            self.dataset, "tokens", "ner_tags"
+            self.dataset, "tokens", "ner_tags", return_label_options=True
         )
         self.assertEqual(len(label_options), 4)
         self.assertEqual(type(dataset[0]["ner_tags"]), str)
         self.assertNotEqual(type(dataset[0]["ner_tags"]), int)
-        labels = [
-            spans.split(LABEL2ENTITY_SEPARATOR, 1)[0].strip()
-            for spans in dataset[0]["ner_tags"].split(LABEL_SEPARATOR)
-        ]
-        for label in labels:
-            self.assertIn(label, label_options)
+        spans = [span for span in dataset[0]["ner_tags"].split("\n")]
+        for span in spans:
+            self.assertTrue(any([label in span for label in label_options]))
 
     def test_formatting_with_span_labels(self):
         """Test formatting with span labels"""
@@ -106,6 +103,7 @@ class TestTransformationsTokenClassification(unittest.TestCase):
             dataset=self.dataset,
             token_column="tokens",
             label_column="ner_tags",
+            return_label_options=True
         )
         fewshot_examples = dataset.select([1, 2, 3])
         prompt = BasePrompt(
@@ -115,25 +113,31 @@ class TestTransformationsTokenClassification(unittest.TestCase):
             label_options=label_options,
         )
         raw_prompt = prompt.get_prompt_text(label_options, fewshot_examples)
-        self.assertIn("PER -> Peter Blackburn", raw_prompt)
-        self.assertIn("LOC -> BRUSSELS", raw_prompt)
+        self.assertIn("Peter Blackburn is PER entity.", raw_prompt)
+        self.assertIn("BRUSSELS is LOC entity.", raw_prompt)
         for label in label_options:
             self.assertIn(label, raw_prompt)
 
     def test_expanded_textual_labels(self):
         """Test formatting with expanded textual labels"""
-        extended_mapping = {"PER": "person", "LOC": "location", "ORG": "organization", "MISC": "misceallaneous"}
-        id2label = replace_token_labels(dict(enumerate(self.dataset.features["ner_tags"].feature.names)), extended_mapping)
-        self.assertIn("B-location", id2label.values())
-        self.assertIn("I-person", id2label.values())
-        self.assertNotIn("B-LOC", id2label.values())
-        self.assertNotIn("I-MISC", id2label.values())
+        expanded_label_mapping = {
+            0: "O",
+            1: "B-person",
+            2: "I-person",
+            3: "B-location",
+            4: "I-location",
+            5: "B-organization",
+            6: "I-organization",
+            7: "B-miscellaneous",
+            8: "I-miscellaneous",
+        }
 
         dataset, label_options = convert_token_labels_to_spans(
             dataset=self.dataset,
             token_column="tokens",
             label_column="ner_tags",
-            expanded_label_mapping=id2label
+            expanded_label_mapping=expanded_label_mapping,
+            return_label_options=True
         )
         fewshot_examples = dataset.select([1, 2, 3])
         prompt = BasePrompt(
@@ -143,7 +147,7 @@ class TestTransformationsTokenClassification(unittest.TestCase):
             label_options=label_options,
         )
         raw_prompt = prompt.get_prompt_text(label_options, fewshot_examples)
-        self.assertIn("person -> Peter Blackburn", raw_prompt)
+        self.assertIn("Peter Blackburn is person entity.", raw_prompt)
         self.assertNotIn("PER", raw_prompt)
         for label in label_options:
             self.assertIn(label, raw_prompt)
@@ -154,9 +158,10 @@ class TestTransformationsTokenClassification(unittest.TestCase):
             dataset=self.dataset,
             token_column="tokens",
             label_column="ner_tags",
+            return_label_options=True
         )
         id2label = dict(enumerate(self.dataset.features["ner_tags"].feature.names))
-        self.assertEqual(dataset[0]["ner_tags"], "ORG -> EU\nMISC -> German, British")
+        self.assertEqual(dataset[0]["ner_tags"], "EU is ORG entity.\nGerman is MISC entity.\nBritish is MISC entity.")
         dataset = dataset.select(range(10))
         dataset = convert_spans_to_token_labels(
             dataset=dataset,
