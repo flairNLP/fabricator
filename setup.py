@@ -9,7 +9,7 @@ def requirements():
 
 setup(
     name='fabricator-ai',
-    version='0.2.0-beta',
+    version='0.2.0-alpha',
     author='Humboldt University Berlin, deepset GmbH',
     author_email="goldejon@informatik.hu-berlin.de",
     description='Conveniently generating datasets with large language models.',
