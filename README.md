@@ -3,7 +3,7 @@
 
 <p align="center">A flexible open-source framework to generate datasets with large language models.</p>
 <p align="center">
-<img alt="version" src="https://img.shields.io/badge/version-0.1-green">
+<img alt="version" src="https://img.shields.io/badge/version-0.2.0-green">
 <img alt="python" src="https://img.shields.io/badge/python-3.10-blue">
 <img alt="Static Badge" src="https://img.shields.io/badge/license-apache2.0-green">
 </p>
@@ -18,6 +18,7 @@
 
 ## News
 
+- **[10/23]** We released the first version of this repository on PyPI. You can install it via `pip install fabricator-ai`.
 - **[10/23]** Our paper got accepted at EMNLP 2023. You can find the preprint [here](https://arxiv.org/abs/2309.09582). You can find the experimental scripts under release v0.1.0.
 - **[09/23]** Support for `gpt-3.5-turbo-instruct` added in the new [Haystack](https://github.com/deepset-ai/haystack) release!
 - **[08/23]** Added several experimental scripts to investigate the generation and annotation ability of `gpt-3.5-turbo` on various downstream tasks + the influence of few-shot examples on the performance for different downstream tasks.
@@ -45,6 +46,11 @@ git clone git@github.com:flairNLP/fabricator.git
 cd fabricator
 conda create -y -n fabricator python=3.10
 conda activate fabricator
+pip install fabricator-ai
+```
+
+If you want to install in editable mode, you can use the following command:
+```
 pip install -e .
 ```
 
