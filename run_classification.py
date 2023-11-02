@@ -35,7 +35,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, default="imdb")
     parser.add_argument("--tam_model", type=str, default="distilbert-base-uncased")
     parser.add_argument("--embedding_model", type=str, default="distilbert-base-uncased")
-    parser.add_argument("--init_strategy", type=str, choices=["random", "class-centeroid-closest", "class-centeroid-furthest", "expected-gradients"], default="random")
+    parser.add_argument("--init_strategy", type=str, choices=["random", "class-centeroid-closest", "class-centeroid-furthest", "expected-gradients", "certainty"], default="random")
     parser.add_argument("--dataset_size", type=int, default=[32, 64, 128, 256, 512, 1024, 2048, 4096, 8192])
     arguments = parser.parse_args()
     run(arguments)
