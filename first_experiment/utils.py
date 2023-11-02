@@ -89,3 +89,8 @@ def get_trainloader(
     )
 
     return train_loader
+
+
+def get_num_epochs(batch_size: int, dataset_size: int, max_epochs: int, min_steps: int):
+    total_steps = max(dataset_size// batch_size * max_epochs, min_steps)
+    return total_steps * batch_size // dataset_size

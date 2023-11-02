@@ -73,15 +73,21 @@ def random_selection(
     dataset = dataset.shuffle(seed=42)
     label_column = task_keys["label_column"]
     id2label = dict(enumerate(dataset["train"].features[label_column].names))
+
     num_samples_per_class = num_total_samples // len(dataset["train"].features[label_column].names)
+    labels_per_class = {i: min(num_samples_per_class, possible_samples_per_class)
+                        for i, possible_samples_per_class
+                        in Counter(dataset["train"][label_column]).items()}
     counter = Counter({idx: 0 for idx in id2label.keys()})
+
     selected_examples = []
     for idx, example in enumerate(dataset["train"]):
-        if counter.get(example[label_column]) < num_samples_per_class:
-            counter[example[label_column]] += 1
+        current_label = example[label_column]
+        if counter.get(current_label) < labels_per_class.get(current_label):
+            counter[current_label] += 1
             selected_examples.append(idx)
             continue
-        if all([count == num_samples_per_class for count in counter.values()]):
+        if all([count == labels_per_class.get(i) for i, count in counter.items()]):
             break
     dataset["train"] = dataset["train"].select(selected_examples)
     return dataset

@@ -35,14 +35,19 @@ def train_classification(
 
     log_path = PATH / experiment_extension
 
-    batch_size = 16
-    total_steps = max(len(dataset["train"]) // batch_size * 3, 200)
+    num_epochs = get_num_epochs(
+        batch_size=16,
+        dataset_size=len(dataset["train"]),
+        max_epochs=5,
+        min_steps=200,
+    )
+
     training_args = TrainingArguments(
         output_dir=str(log_path),
         learning_rate=2e-5,
         per_device_train_batch_size=16,
         per_device_eval_batch_size=16,
-        num_train_epochs=total_steps * batch_size // len(dataset["train"]),
+        num_train_epochs=num_epochs,
         warmup_ratio=0.1,
         weight_decay=0.01,
         logging_steps=10,
