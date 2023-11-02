@@ -22,7 +22,7 @@ def select_fewshots(
         dataset = random_selection(
             full_dataset,
             dataset_size,
-            task_keys["label_column"]
+            task_keys
         )
     elif args.init_strategy == "class-centeroid-closest":
         if args.embedding_model is None:
@@ -65,12 +65,13 @@ def select_fewshots(
 def random_selection(
     dataset: DatasetDict,
     num_total_samples: int,
-    label_column: str
+    task_keys: dict
 ) -> DatasetDict:
     """
     Selects a fewshot dataset from the full dataset by randomly selecting examples.
     """
     dataset = dataset.shuffle(seed=42)
+    label_column = task_keys["label_column"]
     id2label = dict(enumerate(dataset["train"].features[label_column].names))
     num_samples_per_class = num_total_samples // len(dataset["train"].features[label_column].names)
     counter = Counter({idx: 0 for idx in id2label.keys()})

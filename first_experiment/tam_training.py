@@ -12,6 +12,7 @@ from utils import *
 def train_classification(
     args: Namespace,
     dataset: DatasetDict,
+    dataset_size: int,
     task_keys: dict
 ):
     label_column = task_keys["label_column"]
@@ -28,14 +29,14 @@ def train_classification(
 
     experiment_extension = (f"{args.tam_model}"
                             f"_{args.dataset}"
-                            f"_{args.dataset_size}"
+                            f"_{dataset_size}"
                             f"_{args.init_strategy}"
-                            f"_{args.embedding_model if args.embedding_model is not None else ''}")
+                            f"{'_' + args.embedding_model if args.embedding_model is not None else ''}")
 
     log_path = PATH / experiment_extension
 
     batch_size = 16
-    total_steps = min(len(dataset["train"]) // batch_size * 3, 200)
+    total_steps = max(len(dataset["train"]) // batch_size * 3, 200)
     training_args = TrainingArguments(
         output_dir=str(log_path),
         learning_rate=2e-5,
@@ -44,7 +45,7 @@ def train_classification(
         num_train_epochs=total_steps * batch_size // len(dataset["train"]),
         warmup_ratio=0.1,
         weight_decay=0.01,
-        logging_steps=5,
+        logging_steps=10,
         save_strategy="no",
         push_to_hub=False,
     )
@@ -60,7 +61,6 @@ def train_classification(
         model=model,
         args=training_args,
         train_dataset=tokenized_dataset["train"],
-        eval_dataset=tokenized_dataset["validation"] if "validation" in tokenized_dataset else None,
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
