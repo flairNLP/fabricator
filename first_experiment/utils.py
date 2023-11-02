@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 from typing import Tuple
 
 import torch
@@ -7,7 +7,8 @@ from torch.utils.data import DataLoader
 from datasets import DatasetDict
 from transformers import AutoModel, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer, PreTrainedModel
 
-CACHE_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), ".cache")
+PATH = Path("/glusterfs/dfs-gfs-dist/goldejon/initial-starting-point-generation")
+CACHE_DIR = PATH / ".cache"
 
 
 def get_embedding_model_and_tokenizer(
@@ -25,21 +26,27 @@ def get_embedding_model_and_tokenizer(
 
 def get_classification_model_and_tokenizer(
     model_name_or_path: str,
+    id2label: dict = None,
 ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
     """
     Get classification model and tokenizer.
     """
-    model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        model_name_or_path,
+        num_labels=len(id2label) if id2label is not None else None,
+        id2label=id2label if id2label is not None else None,
+        label2id={label: i for i, label in id2label.items()} if id2label is not None else None,
+    )
     if torch.cuda.is_available():
         model.cuda()
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     return model, tokenizer
 
+
 def preprocess_function(
     examples,
     tokenizer: PreTrainedTokenizer,
     task_keys: dict,
-    label_to_id: dict,
 ):
     sentence1_key, sentence2_key = task_keys["text_column"]
 
@@ -50,12 +57,8 @@ def preprocess_function(
     result = tokenizer(*texts, padding=True, max_length=256, truncation=True)
 
     if "label" in examples:
-        if label_to_id is not None:
-            # Map labels to IDs (not necessary for GLUE tasks)
-            result["labels"] = [label_to_id[l] for l in examples["label"]]
-        else:
-            # In all cases, rename the column to labels because the model will expect that.
-            result["labels"] = examples["label"]
+        result["labels"] = examples["label"]
+
     return result
 
 
@@ -68,12 +71,6 @@ def get_trainloader(
     """
     Get dataloader for classification dataset.
     """
-    label_column = task_keys["label_column"]
-    try:
-        label_to_id = dict(enumerate(dataset["train"].features[label_column].feature.names))
-    except (AttributeError, KeyError):
-        label_to_id = None
-
     processed_datasets = dataset.map(
         preprocess_function,
         batched=True,
@@ -81,7 +78,6 @@ def get_trainloader(
         fn_kwargs={
             "tokenizer": tokenizer,
             "task_keys": task_keys,
-            "label_to_id": label_to_id
         },
         desc="Running tokenizer on dataset",
     )

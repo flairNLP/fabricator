@@ -17,23 +17,25 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--dataset", type=str, default="imdb")
     parser.add_argument("--tam_model", type=str, default="distilbert-base-uncased")
-    parser.add_argument("--embedding_model", type=str, default="distilbert-base-uncased")
+    parser.add_argument("--embedding_model", type=str, default=None)
     parser.add_argument("--init_strategy", type=str, choices=["random", "closest-to-centeroid", "furthest-to-centeroid", "expected-gradients", "certainty"], default="random")
     parser.add_argument("--stopping_criteria", type=str)
-    parser.add_argument("--dataset_size", type=int, default=[32, 64, 128, 256, 512, 1024, 2048, 4096, 8192])
+    parser.add_argument("--dataset_size", type=int, nargs="+", default=[32, 64, 128, 256, 512, 1024, 2048, 4096, 0])
     args = parser.parse_args()
 
     full_dataset = load_dataset(args.dataset)
-    #TODO stopping_critera = load_stopping_criteria(args.stopping_criteria)
     task_keys = task_to_keys[args.dataset]
 
     for dataset_size in args.dataset_size:
-        dataset = select_fewshots(
-            args,
-            full_dataset,
-            dataset_size,
-            task_keys
-        )
+        if dataset_size > 0:
+            dataset = select_fewshots(
+                args,
+                full_dataset,
+                dataset_size,
+                task_keys
+            )
+        else:
+            dataset = full_dataset
 
         train_classification(
             args,

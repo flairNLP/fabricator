@@ -25,6 +25,8 @@ def select_fewshots(
             task_keys["label_column"]
         )
     elif args.init_strategy == "class-centeroid-closest":
+        if args.embedding_model is None:
+            raise ValueError("You need to specify an embedding model for this init strategy.")
         dataset = closest_to_centeroid_selection(
             args.embedding_model,
             full_dataset,
@@ -32,6 +34,8 @@ def select_fewshots(
             task_keys
         )
     elif args.init_strategy == "class-centeroid-furthest":
+        if args.embedding_model is None:
+            raise ValueError("You need to specify an embedding model for this init strategy.")
         dataset = furthest_to_centeroid_selection(
             args.embedding_model,
             full_dataset,
