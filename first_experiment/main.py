@@ -47,7 +47,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, default="imdb", choices=["imdb", "rte", "qnli", "sst2", "snli"])
     parser.add_argument("--tam_model", type=str, default="distilbert-base-uncased")
     parser.add_argument("--embedding_model", type=str, default=None)
-    parser.add_argument("--init_strategy", type=str, choices=["random", "closest-to-centeroid", "furthest-to-centeroid", "expected-gradients", "certainty"], default="random")
+    parser.add_argument("--init_strategy", type=str, choices=["random", "closest-to-centeroid", "furthest-to-centeroid", "expected-gradients", "cross-entropy", "entropy"], default="random")
     parser.add_argument("--stopping_criteria", type=str)
     parser.add_argument("--dataset_size", type=int, nargs="+", default=[32, 64, 128, 256, 512, 1024, 2048, 4096, 0])
     args = parser.parse_args()
@@ -56,6 +56,9 @@ if __name__ == "__main__":
     task_keys = task_to_keys[args.dataset]
 
     for dataset_size in args.dataset_size:
+
+        if dataset_size == 0 and args.init_strategy != "random":
+            continue
 
         dataset = deepcopy(full_dataset)
 
