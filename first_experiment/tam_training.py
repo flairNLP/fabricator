@@ -24,7 +24,11 @@ def train_classification(
     tokenized_dataset = dataset.map(
         preprocess_function,
         batched=True,
-        fn_kwargs={"tokenizer": tokenizer, "task_keys": task_keys}
+        fn_kwargs={
+            "tokenizer": tokenizer,
+            "task_keys": task_keys,
+            "label_column": label_column,
+        }
     )
 
     experiment_extension = (f"{args.tam_model}"

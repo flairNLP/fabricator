@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
+from copy import deepcopy
 
-from datasets import load_dataset
+from datasets import load_dataset, DatasetDict
 
 from selection_strategies import select_fewshots
 from tam_training import train_classification
@@ -27,6 +28,19 @@ dataset_prefixes = {
     "sst2": "glue",
 }
 
+def load_dataset_from_hub(dataset_name: str) -> DatasetDict:
+    if dataset_name in dataset_prefixes:
+        dataset = load_dataset(dataset_prefixes[dataset_name], dataset_name)
+    else:
+        dataset = load_dataset(dataset_name)
+
+    dataset["test"] = dataset[eval_splits[dataset_name]]
+
+    if dataset_name == "snli":
+        dataset = dataset.filter(lambda x: x["label"] != -1)
+
+    return dataset
+
 
 if __name__ == "__main__":
     parser = ArgumentParser()
@@ -38,27 +52,20 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_size", type=int, nargs="+", default=[32, 64, 128, 256, 512, 1024, 2048, 4096, 0])
     args = parser.parse_args()
 
-    if args.dataset in dataset_prefixes:
-        full_dataset = load_dataset(dataset_prefixes[args.dataset], args.dataset)
-    else:
-        full_dataset = load_dataset(args.dataset)
+    full_dataset = load_dataset_from_hub(args.dataset)
     task_keys = task_to_keys[args.dataset]
 
-    full_dataset["test"] = full_dataset[eval_splits[args.dataset]]
-
-    if args.dataset == "snli":
-        full_dataset = full_dataset.filter(lambda x: x["label"] != -1)
-
     for dataset_size in args.dataset_size:
+
+        dataset = deepcopy(full_dataset)
+
         if dataset_size > 0:
             dataset = select_fewshots(
                 args,
-                full_dataset,
+                dataset,
                 dataset_size,
                 task_keys
             )
-        else:
-            dataset = full_dataset
 
         train_classification(
             args,

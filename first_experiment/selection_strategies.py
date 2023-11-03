@@ -1,3 +1,4 @@
+import os
 import json
 from argparse import Namespace
 from collections import Counter
@@ -18,29 +19,34 @@ def select_fewshots(
     Selects a fewshot dataset from the full dataset according to the specified init_strategy.
     """
 
+    if not os.path.exists(CACHE_DIR):
+        os.mkdir(CACHE_DIR)
+
     if args.init_strategy == "random":
         dataset = random_selection(
             full_dataset,
             dataset_size,
             task_keys
         )
-    elif args.init_strategy == "class-centeroid-closest":
+    elif args.init_strategy == "closest-to-centeroid":
         if args.embedding_model is None:
             raise ValueError("You need to specify an embedding model for this init strategy.")
         dataset = closest_to_centeroid_selection(
             args.embedding_model,
             full_dataset,
             dataset_size,
-            task_keys
+            task_keys,
+            args.dataset
         )
-    elif args.init_strategy == "class-centeroid-furthest":
+    elif args.init_strategy == "furthest-to-centeroid":
         if args.embedding_model is None:
             raise ValueError("You need to specify an embedding model for this init strategy.")
         dataset = furthest_to_centeroid_selection(
             args.embedding_model,
             full_dataset,
             dataset_size,
-            task_keys
+            task_keys,
+            args.dataset
         )
     elif args.init_strategy == "expected-gradients":
         dataset = expected_gradients_selection(
@@ -98,6 +104,7 @@ def closest_to_centeroid_selection(
     dataset: DatasetDict,
     num_total_samples: int,
     task_keys: dict,
+    dataset_name: str,
 ) -> DatasetDict:
     """
     Selects a fewshot dataset from the full dataset by selecting the examples closest to the class centeroid.
@@ -107,7 +114,8 @@ def closest_to_centeroid_selection(
         dataset,
         num_total_samples,
         task_keys,
-        selection_strategy="closest"
+        selection_strategy="closest",
+        dataset_name=dataset_name
     )
 
 def furthest_to_centeroid_selection(
@@ -115,6 +123,7 @@ def furthest_to_centeroid_selection(
     dataset: DatasetDict,
     num_total_samples: int,
     task_keys: dict,
+    dataset_name: str,
 ) -> DatasetDict:
     """
     Selects a fewshot dataset from the full dataset by selecting the examples furthest to the class centeroid.
@@ -124,7 +133,8 @@ def furthest_to_centeroid_selection(
         dataset,
         num_total_samples,
         task_keys,
-        selection_strategy="furthest"
+        selection_strategy="furthest",
+        dataset_name=dataset_name
     )
 
 
@@ -134,6 +144,7 @@ def selection_with_class_centeroids(
     num_total_samples: int,
     task_keys: dict,
     selection_strategy: str,
+    dataset_name: str,
 ) -> DatasetDict:
     """
     Selects a fewshot dataset from the full dataset by selecting the examples relative to the class centeroid.
@@ -141,7 +152,9 @@ def selection_with_class_centeroids(
     label_column = task_keys["label_column"]
     id2label = dict(enumerate(dataset["train"].features[label_column].names))
 
-    cache_file_name = f"{dataset}-centeroid-{selection_strategy}.json"
+    cache_file_name = (f"{dataset_name}"
+                       f"_centeroid"
+                       f"_embedded-with-{model_name_or_path}.json")
 
     if cache_file_name in os.listdir(CACHE_DIR):
         with open(os.path.join(CACHE_DIR, cache_file_name), "r") as f:
@@ -153,34 +166,40 @@ def selection_with_class_centeroids(
         embeddings = []
         with torch.no_grad():
             for batch in tqdm(train_loader):
+                labels = batch.pop("labels").detach().cpu().numpy()
                 outputs = model(**{k: v.to(model.device) for k, v in batch.items()})
                 cls_rep = outputs.last_hidden_state[:, 0, :].detach().cpu().numpy()
-                embeddings.extend(cls_rep)
+                embeddings.extend([(l, e) for l, e in zip(labels, cls_rep)])
 
         assert len(embeddings) == len(dataset["train"])
 
-        embedding_tuples = [(i, l, e) for i, (l, e) in enumerate(zip(dataset["train"][label_column], embeddings))]
+        embedding_tuples = [(i, l, e) for i, (l, e) in enumerate(embeddings)]
 
         def cosine(x, y):
             return np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y))
 
         distance_to_center = []
         for label_idx in id2label.keys():
+            indices = [i for i, label, emb in embedding_tuples if label == label_idx]
+            class_labels = [label for i, label, emb in embedding_tuples if label == label_idx]
             class_embeddings = [emb for i, label, emb in embedding_tuples if label == label_idx]
             class_centeroid = np.mean(class_embeddings, axis=0)
             dists = [cosine(class_centeroid, emb) for emb in class_embeddings]
-            distance_to_center.extend([(i, l, d) for (i, l, e), d in zip(embedding_tuples, dists)])
+            distance_to_center.extend([(i, l.item(), d.item()) for i, l, d in zip(indices, class_labels, dists)])
 
         with open(os.path.join(CACHE_DIR, cache_file_name), "w") as f:
             json.dump(distance_to_center, f)
 
     num_examples_per_class = num_total_samples // len(id2label.keys())
+    labels_per_class = {i: min(num_examples_per_class, possible_samples_per_class)
+                        for i, possible_samples_per_class
+                        in Counter(dataset["train"][label_column]).items()}
     selected_examples = []
 
     for label_idx in id2label.keys():
         class_distance_to_center = [dist_tuple for dist_tuple in distance_to_center if dist_tuple[1] == label_idx]
-        sorted_di = sorted(class_distance_to_center, key=lambda x: x[2], reverse=True if selection_strategy == "closest" else False)
-        selected_examples.extend([idx for idx, _, _ in sorted_di[:num_examples_per_class]])
+        sorted_dists = sorted(class_distance_to_center, key=lambda x: x[2], reverse=True if selection_strategy == "closest" else False)
+        selected_examples.extend([idx for idx, _, _ in sorted_dists[:labels_per_class.get(label_idx)]])
 
     dataset["train"] = dataset["train"].select(selected_examples)
     return dataset

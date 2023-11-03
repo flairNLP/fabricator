@@ -5,11 +5,15 @@ import torch
 from torch.utils.data import DataLoader
 
 from datasets import DatasetDict
-from transformers import AutoModel, AutoModelForSequenceClassification, AutoTokenizer, PreTrainedTokenizer, PreTrainedModel
+from transformers import (AutoModel, AutoModelForSequenceClassification, AutoTokenizer,
+                          DataCollatorWithPadding, PreTrainedTokenizer, PreTrainedModel)
 
 PATH = Path("/glusterfs/dfs-gfs-dist/goldejon/initial-starting-point-generation")
 CACHE_DIR = PATH / ".cache"
 
+HF_HUB_PREFIXES = {
+    "all-mpnet-base-v2": "sentence-transformers"
+}
 
 def get_embedding_model_and_tokenizer(
     model_name_or_path: str,
@@ -17,6 +21,9 @@ def get_embedding_model_and_tokenizer(
     """
     Get embedding model and tokenizer.
     """
+    if model_name_or_path in HF_HUB_PREFIXES:
+        model_name_or_path = f"{HF_HUB_PREFIXES[model_name_or_path]}/{model_name_or_path}"
+
     model = AutoModel.from_pretrained(model_name_or_path)
     if torch.cuda.is_available():
         model.cuda()
@@ -31,6 +38,9 @@ def get_classification_model_and_tokenizer(
     """
     Get classification model and tokenizer.
     """
+    if model_name_or_path in HF_HUB_PREFIXES:
+        model_name_or_path = f"{HF_HUB_PREFIXES[model_name_or_path]}/{model_name_or_path}"
+
     model = AutoModelForSequenceClassification.from_pretrained(
         model_name_or_path,
         num_labels=len(id2label) if id2label is not None else None,
@@ -47,6 +57,7 @@ def preprocess_function(
     examples,
     tokenizer: PreTrainedTokenizer,
     task_keys: dict,
+    label_column: str,
 ):
     sentence1_key, sentence2_key = task_keys["text_column"]
 
@@ -56,8 +67,8 @@ def preprocess_function(
 
     result = tokenizer(*texts, padding=True, max_length=256, truncation=True)
 
-    if "label" in examples:
-        result["labels"] = examples["label"]
+    if label_column in examples:
+        result[label_column] = examples[label_column]
 
     return result
 
@@ -78,12 +89,16 @@ def get_trainloader(
         fn_kwargs={
             "tokenizer": tokenizer,
             "task_keys": task_keys,
+            "label_column": task_keys["label_column"],
         },
         desc="Running tokenizer on dataset",
     )
 
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+
     train_loader = DataLoader(
         processed_datasets["train"],
+        collate_fn=data_collator,
         batch_size=batch_size,
         shuffle=False,
     )
