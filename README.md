@@ -47,6 +47,7 @@ cd fabricator
 conda create -y -n fabricator python=3.10
 conda activate fabricator
 pip install fabricator-ai
+pip install farm-haystack[inference]
 ```
 
 If you want to install in editable mode, you can use the following command:
