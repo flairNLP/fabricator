@@ -110,13 +110,20 @@ fewshot examples or how to annotate unlabeled data into predefined categories.
 If you find this repository useful, please cite our work.
 
 ```
-@misc{golde2023fabricator,
-      title={Fabricator: An Open Source Toolkit for Generating Labeled Training Data with Teacher LLMs}, 
-      author={Jonas Golde and Patrick Haller and Felix Hamborg and Julian Risch and Alan Akbik},
-      year={2023},
-      eprint={2309.09582},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
+@inproceedings{golde2023fabricator,
+    title = "Fabricator: An Open Source Toolkit for Generating Labeled Training Data with Teacher {LLM}s",
+    author = "Golde, Jonas  and
+      Haller, Patrick  and
+      Hamborg, Felix  and
+      Risch, Julian  and
+      Akbik, Alan",
+    booktitle = "Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing: System Demonstrations",
+    month = dec,
+    year = "2023",
+    address = "Singapore",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2023.emnlp-demo.1",
+    pages = "1--11",
 }
 ```
 
