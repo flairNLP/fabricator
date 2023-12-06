@@ -112,11 +112,7 @@ If you find this repository useful, please cite our work.
 ```
 @inproceedings{golde2023fabricator,
     title = "Fabricator: An Open Source Toolkit for Generating Labeled Training Data with Teacher {LLM}s",
-    author = "Golde, Jonas  and
-      Haller, Patrick  and
-      Hamborg, Felix  and
-      Risch, Julian  and
-      Akbik, Alan",
+    author = "Golde, Jonas  and Haller, Patrick  and Hamborg, Felix  and Risch, Julian  and Akbik, Alan",
     booktitle = "Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing: System Demonstrations",
     month = dec,
     year = "2023",
