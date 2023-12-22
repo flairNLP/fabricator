@@ -43,7 +43,7 @@ Movie Review: {text}
 Sentiment: 
 ```
 
-## Inferring the Prompt rom Dataset Info
+## Inferring the Prompt from Dataset Info
 
 Huggingface Dataset objects provide the possibility to infer a prompt from the dataset. This can be achieved by using
 the `infer_prompt_from_dataset` function. This function takes a dataset
