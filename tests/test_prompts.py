@@ -126,7 +126,7 @@ class TestDownstreamTasks(unittest.TestCase):
         self.question_answering = load_dataset("squad", split="train").flatten()\
             .rename_column("answers.text", "answer").map(preprocess_qa).select([1, 2, 3])
         self.ner = load_dataset("conll2003", split="train").select([1, 2, 3])
-        self.translation = load_dataset("opus100", language_pair="de-nl", split="test").flatten()\
+        self.translation = load_dataset("opus100", "de-nl", split="test").flatten()\
             .rename_columns({"translation.de": "german", "translation.nl": "dutch"}).select([1, 2, 3])
 
     def test_translation(self):
