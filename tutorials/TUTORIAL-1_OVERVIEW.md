@@ -169,7 +169,7 @@ frameworks such as [flair](https://github.com/flairNLP/flair), deepset's [haysta
 ```python
 from fabricator import BasePrompt, DatasetGenerator
 
-prompt_template = BasePrompt(task_description="Generate a movie review.")
+prompt = BasePrompt(task_description="Generate a movie review.")
 
 prompt_node = PromptNode("google/flan-t5-base")
 
