@@ -61,7 +61,7 @@ class DatasetGenerator:
         num_samples_to_generate: int = 10,
         timeout_per_prompt: Optional[int] = None,
         log_every_n_api_calls: int = 25,
-        dummy_response: Optional[Union[str, Callable]] = None
+        dummy_response: Optional[Union[str, Callable]] = None,
     ) -> Union[Dataset, Tuple[Dataset, Dataset]]:
         """Generate a dataset based on a prompt template and support examples.
         Optionally, unlabeled examples can be provided to annotate unlabeled data.
@@ -93,8 +93,11 @@ class DatasetGenerator:
         if fewshot_dataset:
             self._assert_fewshot_dataset_matches_prompt(prompt_template, fewshot_dataset)
 
-        assert fewshot_sampling_strategy in [None, "uniform", "stratified"], \
-            "Sampling strategy must be 'uniform' or 'stratified'"
+        assert fewshot_sampling_strategy in [
+            None,
+            "uniform",
+            "stratified",
+        ], "Sampling strategy must be 'uniform' or 'stratified'"
 
         if fewshot_dataset and not fewshot_sampling_column:
             fewshot_sampling_column = prompt_template.generate_data_for_column[0]
@@ -111,7 +114,7 @@ class DatasetGenerator:
             num_samples_to_generate,
             timeout_per_prompt,
             log_every_n_api_calls,
-            dummy_response
+            dummy_response,
         )
 
         if return_unlabeled_dataset:
@@ -134,7 +137,6 @@ class DatasetGenerator:
         """
 
         if dummy_response:
-
             if isinstance(dummy_response, str):
                 logger.info(f"Returning dummy response: {dummy_response}")
                 return dummy_response
@@ -152,7 +154,7 @@ class DatasetGenerator:
             prediction = self.prompt_node.run(
                 prompt_template=HaystackPromptTemplate(prompt=prompt_text),
                 invocation_context=invocation_context,
-            )[0]["results"]
+            )
         except Exception as error:
             logger.error(f"Error while generating example: {error}")
             return None
@@ -172,7 +174,7 @@ class DatasetGenerator:
         num_samples_to_generate: int,
         timeout_per_prompt: Optional[int],
         log_every_n_api_calls: int = 25,
-        dummy_response: Optional[Union[str, Callable]] = None
+        dummy_response: Optional[Union[str, Callable]] = None,
     ):
         current_tries_left = self._max_tries
         current_log_file = self._setup_log(prompt_template)
@@ -200,8 +202,11 @@ class DatasetGenerator:
 
             if fewshot_dataset:
                 prompt_labels, fewshot_examples = self._sample_fewshot_examples(
-                    prompt_template, fewshot_dataset, fewshot_sampling_strategy, fewshot_examples_per_class,
-                    fewshot_sampling_column
+                    prompt_template,
+                    fewshot_dataset,
+                    fewshot_sampling_strategy,
+                    fewshot_examples_per_class,
+                    fewshot_sampling_column,
                 )
 
             prompt_text = prompt_template.get_prompt_text(prompt_labels, fewshot_examples)
@@ -231,6 +236,7 @@ class DatasetGenerator:
                         f" {len(generated_dataset)} examples."
                     )
                     break
+                continue
 
             if len(prediction) == 1:
                 prediction = prediction[0]
@@ -310,8 +316,9 @@ class DatasetGenerator:
             return target_type(prediction)
         except ValueError:
             logger.warning(
-                "Could not convert prediction {} to type {}. "
-                "Returning original prediction.", repr(prediction), target_type
+                "Could not convert prediction {} to type {}. " "Returning original prediction.",
+                repr(prediction),
+                target_type,
             )
             return prediction
 
@@ -321,21 +328,20 @@ class DatasetGenerator:
         fewshot_dataset: Dataset,
         fewshot_sampling_strategy: str,
         fewshot_examples_per_class: int,
-        fewshot_sampling_column: str
+        fewshot_sampling_column: str,
     ) -> Tuple[Union[List[str], str], Dataset]:
-
         if fewshot_sampling_strategy == "uniform":
             prompt_labels = choice(prompt_template.label_options, 1)[0]
-            fewshot_examples = fewshot_dataset.filter(
-                lambda example: example[fewshot_sampling_column] == prompt_labels
-            ).shuffle().select(range(fewshot_examples_per_class))
+            fewshot_examples = (
+                fewshot_dataset.filter(lambda example: example[fewshot_sampling_column] == prompt_labels)
+                .shuffle()
+                .select(range(fewshot_examples_per_class))
+            )
 
         elif fewshot_sampling_strategy == "stratified":
             prompt_labels = prompt_template.label_options
             fewshot_examples = single_label_stratified_sample(
-                fewshot_dataset,
-                fewshot_sampling_column,
-                fewshot_examples_per_class
+                fewshot_dataset, fewshot_sampling_column, fewshot_examples_per_class
             )
 
         else:
@@ -345,9 +351,11 @@ class DatasetGenerator:
             else:
                 fewshot_examples = fewshot_dataset.shuffle()
 
-        assert len(fewshot_examples) > 0, f"Could not find any fewshot examples for label(s) {prompt_labels}." \
-                                          f"Ensure that labels of fewshot examples match the label_options " \
-                                          f"from the prompt."
+        assert len(fewshot_examples) > 0, (
+            f"Could not find any fewshot examples for label(s) {prompt_labels}."
+            f"Ensure that labels of fewshot examples match the label_options "
+            f"from the prompt."
+        )
 
         return prompt_labels, fewshot_examples
 
