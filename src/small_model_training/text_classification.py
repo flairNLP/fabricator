@@ -26,6 +26,8 @@ def get_influential_subset(dataset):
 
     tokenized_imdb = dataset.map(preprocess_function, batched=True)
 
+    print("done tokenizing")
+
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
     id2label = {0: "NEGATIVE", 1: "POSITIVE"}
@@ -46,6 +48,9 @@ def get_influential_subset(dataset):
     )
 
     trainer.train()
+    trainer.evaluate()
+
+    model.save_pretrained("./imdb_model")
 
 
     # TO-DO: calculate influential dataset

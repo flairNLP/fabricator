@@ -1,7 +1,7 @@
 {
   "model_name_or_path": "bert-base-uncased",
   "tokenizer_name": "distilbert-base-uncased",
-  "output_dir":"my_awesome_model",
+  "output_dir":"imdb_model",
   "learning_rate":2e-5,
   "per_device_train_batch_size":16,
   "per_device_eval_batch_size":16,
