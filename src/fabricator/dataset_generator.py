@@ -104,8 +104,8 @@ class DatasetGenerator:
         if fewshot_dataset and not fewshot_sampling_column:
             fewshot_sampling_column = prompt_template.generate_data_for_column[0]
 
-        assert small_model_training in [None, "text-classification"], \
-            "Task for small model training must be available in 'src/small_model_training' e.g. 'text-classification'"
+        assert small_model_training in [None, "text_classification"], \
+            "Task for small model training must be available in 'src/small_model_training' e.g. 'text_classification'"
 
         generated_dataset, original_dataset = self._inner_generate_loop(
             prompt_template,
@@ -216,6 +216,10 @@ class DatasetGenerator:
                     fewshot_sampling_column
                 )
 
+            # label-conditioned generation with label options
+            if fewshot_dataset is None and isinstance(prompt_labels, list):
+                prompt_labels = choice(prompt_labels,1)[0]
+
             prompt_text = prompt_template.get_prompt_text(prompt_labels, fewshot_examples)
 
             if unlabeled_dataset:
@@ -296,7 +300,7 @@ class DatasetGenerator:
             if timeout_per_prompt is not None:
                 time.sleep(timeout_per_prompt)
 
-            if train_small_model_every_x_generations > 0:
+            if train_small_model_every_x_generations is not None and train_small_model_every_x_generations > 0:
                 if prompt_call_idx % train_small_model_every_x_generations == 0:
                     small_model = import_module(small_model_training,"src.small_model_training")
                     inf_subset = small_model.get_influential_subset(generated_dataset)
