@@ -1,17 +1,15 @@
+import torch.nn
 import numpy as np
 from dataclasses import dataclass, field
 from transformers import AutoTokenizer
 from transformers import DataCollatorWithPadding
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, HfArgumentParser
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import evaluate
 @dataclass
 class ModelArguments:
     model_name_or_path: str = field(
         metadata={"help": "Path to pretrained model or model from huggingface.co/models"}
-    )
-    tokenizer_name: str = field(
-        metadata={"help": "Path to pretrained tokenizer or model from huggingface.co/models"}
     )
 
 def get_influential_subset(dataset):
@@ -19,55 +17,77 @@ def get_influential_subset(dataset):
     parser = HfArgumentParser((ModelArguments, TrainingArguments))
     model_args, training_args = parser.parse_json_file('config.json')
 
-    tokenizer = AutoTokenizer.from_pretrained(model_args.tokenizer_name)
+    # setup preprocessing
+    tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
 
     def preprocess_function(examples):
-        return tokenizer(examples["text"], truncation=True)
+        return tokenizer(examples["text"], truncation=True, padding=True)
 
-    tokenized_imdb = dataset.map(preprocess_function, batched=True)
+    # setup compute_metrics
+    accuracy = evaluate.load("accuracy")
+    def compute_metrics(eval_pred):
+        predictions, labels = eval_pred
+        predictions = np.argmax(predictions, axis=1)
+        return accuracy.compute(predictions=predictions, references=labels)
 
-    print("done tokenizing")
+    dataset = Dataset.from_dict(dataset)
+
+    dataset = dataset.train_test_split(test_size=0.2)
+    val_test_split = dataset["test"].train_test_split(test_size=0.5)
+    dataset["val"] = val_test_split["train"]
+    dataset["test"] = val_test_split["test"]
+
+    tokenized_train = dataset["train"].map(preprocess_function, batched=True)
+    tokenized_val = dataset["val"].map(preprocess_function, batched=True)
+    tokenized_test = dataset["test"].map(preprocess_function, batched=True)
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
-    id2label = {0: "NEGATIVE", 1: "POSITIVE"}
-    label2id = {"NEGATIVE": 0, "POSITIVE": 1}
+    # define labels
+    # TO-DO: dynamic labels
+    id2label = {0: "negative", 1: "positive"}
+    label2id = {"negative": 0, "positive": 1}
 
     model = AutoModelForSequenceClassification.from_pretrained(
         model_args.model_name_or_path, num_labels=2, id2label=id2label, label2id=label2id
     )
 
+    # initialize training
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=tokenized_imdb["train"],
-        eval_dataset=tokenized_imdb["test"],
+        train_dataset=tokenized_train,
+        eval_dataset=tokenized_val,
         tokenizer=tokenizer,
         data_collator=data_collator,
         compute_metrics=compute_metrics,
     )
 
     trainer.train()
-    trainer.evaluate()
+    outputs = trainer.predict(tokenized_test)
 
-    model.save_pretrained("./imdb_model")
+    inf_subset = []
 
+    indices = calculate_candidates_knn(outputs)
 
-    # TO-DO: calculate influential dataset
-    inf_subset = dataset
+    for elem in indices:
+        inf_subset.append(dataset["test"][elem.item()])
 
     # TO-DO: check for pre-processing
     return inf_subset
 
+#TO-DO: dynamic variant for calculating inf_subset
+def calculate_candidates_knn(model_outputs):
+    logits = model_outputs[0]
 
-def compute_metrics(eval_pred):
-    predictions, labels = eval_pred
-    predictions = np.argmax(predictions, axis=1)
-    return accuracy.compute(predictions=predictions, references=labels)
+    logits = torch.from_numpy(logits)
 
-accuracy = evaluate.load("accuracy")
+    scores = torch.nn.functional.softmax(logits, dim=-1)
 
-# example dataset for debugging
-imdb = load_dataset("imdb")
-get_influential_subset(imdb)
+    first_values = scores[:, 0]
+    second_values = scores[:, 1]
 
+    distance = torch.abs(first_values - second_values)
+    _, knn_indices = distance.topk(5, largest=False)
+
+    return knn_indices

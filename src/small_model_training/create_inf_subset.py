@@ -21,7 +21,6 @@ imdb_test = load_dataset("imdb", split="test[:1%]")
 
 tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 
-
 def preprocess_function(examples):
     return tokenizer(examples["text"], truncation=True)
 
@@ -53,8 +52,8 @@ second_values = scores[:, 1]
 
 distance = first_values-second_values
 
-dist = torch.abs(distance)
-knn_values, knn_indices = dist.topk(5, largest=False)
+distance = torch.abs(first_values-second_values)
+knn_values, knn_indices = distance.topk(5, largest=False)
 
 fewshot_examples = []
 
