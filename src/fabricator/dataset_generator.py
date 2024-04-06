@@ -210,15 +210,15 @@ class DatasetGenerator:
                 # require a second parameter for sample from label options and not from fewshot examples
                 prompt_labels = prompt_template.label_options
 
-            if fewshot_dataset:
+            # label-conditioned generation with label options
+            if fewshot_dataset is None and isinstance(prompt_labels,list) or prompt_call_idx > train_small_model_every_x_generations:
+                prompt_labels = choice(prompt_labels, 1)[0]
+
+            if fewshot_dataset and prompt_labels in fewshot_dataset['label']:
                 prompt_labels, fewshot_examples = self._sample_fewshot_examples(
-                    prompt_template, fewshot_dataset, fewshot_sampling_strategy, fewshot_examples_per_class,
+                    prompt_labels, fewshot_dataset, fewshot_sampling_strategy, fewshot_examples_per_class,
                     fewshot_sampling_column
                 )
-
-            # label-conditioned generation with label options
-            if fewshot_dataset is None and isinstance(prompt_labels, list):
-                prompt_labels = choice(prompt_labels,1)[0]
 
             prompt_text = prompt_template.get_prompt_text(prompt_labels, fewshot_examples)
 
@@ -302,9 +302,11 @@ class DatasetGenerator:
 
             if train_small_model_every_x_generations is not None and train_small_model_every_x_generations > 0:
                 if prompt_call_idx % train_small_model_every_x_generations == 0:
+                    logger.info("Commencing small model training.")
                     small_model = import_module(small_model_training,"src.small_model_training")
                     inf_subset = small_model.get_influential_subset(generated_dataset)
                     fewshot_dataset = inf_subset
+                    logger.info("Continuing generation.")
 
         generated_dataset = Dataset.from_dict(generated_dataset)
 
@@ -339,7 +341,7 @@ class DatasetGenerator:
 
     @staticmethod
     def _sample_fewshot_examples(
-        prompt_template: BasePrompt,
+        prompt_labels,
         fewshot_dataset: Dataset,
         fewshot_sampling_strategy: str,
         fewshot_examples_per_class: int,
@@ -347,13 +349,15 @@ class DatasetGenerator:
     ) -> Tuple[Union[List[str], str], Dataset]:
 
         if fewshot_sampling_strategy == "uniform":
-            prompt_labels = choice(prompt_template.label_options, 1)[0]
+            prompt_labels = choice(prompt_labels, 1)[0]
             fewshot_examples = fewshot_dataset.filter(
                 lambda example: example[fewshot_sampling_column] == prompt_labels
-            ).shuffle().select(range(fewshot_examples_per_class))
+            )
+            fewshot_examples = fewshot_examples.shuffle().select(
+                range(fewshot_examples_per_class) if fewshot_examples_per_class is not None else range(len(fewshot_examples))
+            )
 
         elif fewshot_sampling_strategy == "stratified":
-            prompt_labels = prompt_template.label_options
             fewshot_examples = single_label_stratified_sample(
                 fewshot_dataset,
                 fewshot_sampling_column,
@@ -361,7 +365,6 @@ class DatasetGenerator:
             )
 
         else:
-            prompt_labels = prompt_template.label_options if prompt_template.label_options else None
             if fewshot_examples_per_class:
                 fewshot_examples = fewshot_dataset.shuffle().select(range(fewshot_examples_per_class))
             else:

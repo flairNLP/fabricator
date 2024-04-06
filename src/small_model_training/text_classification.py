@@ -1,3 +1,4 @@
+import math
 import torch.nn
 import numpy as np
 from dataclasses import dataclass, field
@@ -20,8 +21,15 @@ def get_influential_subset(dataset):
     # setup preprocessing
     tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
 
-    def preprocess_function(examples):
-        return tokenizer(examples["text"], truncation=True, padding=True)
+    # define labels
+    # TO-DO: dynamic labels
+    id2label = {0: "negative", 1: "positive"}
+    label2id = {"negative": 0, "positive": 1}
+
+    def preprocess_function(batch):
+        preprocessed_tokens = tokenizer(batch["text"], truncation=True, padding=True)
+        preprocessed_tokens["label"] = [label2id[label] for label in batch["label"]]
+        return preprocessed_tokens
 
     # setup compute_metrics
     accuracy = evaluate.load("accuracy")
@@ -43,11 +51,6 @@ def get_influential_subset(dataset):
 
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
-    # define labels
-    # TO-DO: dynamic labels
-    id2label = {0: "negative", 1: "positive"}
-    label2id = {"negative": 0, "positive": 1}
-
     model = AutoModelForSequenceClassification.from_pretrained(
         model_args.model_name_or_path, num_labels=2, id2label=id2label, label2id=label2id
     )
@@ -68,16 +71,17 @@ def get_influential_subset(dataset):
 
     inf_subset = []
 
-    indices = calculate_candidates_knn(outputs)
+    indices = calculate_candidates_knn(outputs, math.ceil(len(dataset["test"])/2))
 
     for elem in indices:
         inf_subset.append(dataset["test"][elem.item()])
 
-    # TO-DO: check for pre-processing
+    inf_subset = Dataset.from_list(inf_subset)
+
     return inf_subset
 
 #TO-DO: dynamic variant for calculating inf_subset
-def calculate_candidates_knn(model_outputs):
+def calculate_candidates_knn(model_outputs, num_candidates):
     logits = model_outputs[0]
 
     logits = torch.from_numpy(logits)
@@ -88,6 +92,7 @@ def calculate_candidates_knn(model_outputs):
     second_values = scores[:, 1]
 
     distance = torch.abs(first_values - second_values)
-    _, knn_indices = distance.topk(5, largest=False)
+    #make dynamic
+    _, knn_indices = distance.topk(num_candidates, largest=False)
 
     return knn_indices
