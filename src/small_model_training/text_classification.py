@@ -14,6 +14,19 @@ class ModelArguments:
     )
 
 def get_influential_subset(dataset):
+    id2label = {}
+    label2id = {}
+    counter = 0
+
+    dataset = Dataset.from_dict(dataset)
+
+    # trace labels
+    for entry in dataset:
+        if entry['label'] not in label2id:
+            label2id[entry['label']] = counter
+            id2label[counter] = entry['label']
+            counter += 1
+
     # get parameters from config
     parser = HfArgumentParser((ModelArguments, TrainingArguments))
     model_args, training_args = parser.parse_json_file('config.json')
@@ -21,10 +34,6 @@ def get_influential_subset(dataset):
     # setup preprocessing
     tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
 
-    # define labels
-    # TO-DO: dynamic labels
-    id2label = {0: "negative", 1: "positive"}
-    label2id = {"negative": 0, "positive": 1}
 
     def preprocess_function(batch):
         preprocessed_tokens = tokenizer(batch["text"], truncation=True, padding=True)
@@ -38,8 +47,6 @@ def get_influential_subset(dataset):
         predictions = np.argmax(predictions, axis=1)
         return accuracy.compute(predictions=predictions, references=labels)
 
-    dataset = Dataset.from_dict(dataset)
-
     dataset = dataset.train_test_split(test_size=0.2)
     val_test_split = dataset["test"].train_test_split(test_size=0.5)
     dataset["val"] = val_test_split["train"]
@@ -52,7 +59,7 @@ def get_influential_subset(dataset):
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
     model = AutoModelForSequenceClassification.from_pretrained(
-        model_args.model_name_or_path, num_labels=2, id2label=id2label, label2id=label2id
+        model_args.model_name_or_path, num_labels=counter, id2label=id2label, label2id=label2id
     )
 
     # initialize training
@@ -71,7 +78,7 @@ def get_influential_subset(dataset):
 
     inf_subset = []
 
-    indices = calculate_candidates_knn(outputs, math.ceil(len(dataset["test"])/2))
+    indices = calculate_candidates_entropy_knn(outputs, math.ceil(len(dataset["test"])/2))
 
     for elem in indices:
         inf_subset.append(dataset["test"][elem.item()])
@@ -81,18 +88,19 @@ def get_influential_subset(dataset):
     return inf_subset
 
 #TO-DO: dynamic variant for calculating inf_subset
-def calculate_candidates_knn(model_outputs, num_candidates):
+def calculate_candidates_entropy_knn(model_outputs, num_candidates):
     logits = model_outputs[0]
 
     logits = torch.from_numpy(logits)
 
     scores = torch.nn.functional.softmax(logits, dim=-1)
+    def entropy(probabilities):
+        return -torch.sum(probabilities * torch.log2(probabilities))
 
-    first_values = scores[:, 0]
-    second_values = scores[:, 1]
+    entropy_values = [entropy(probabilities) for probabilities in scores]
 
-    distance = torch.abs(first_values - second_values)
-    #make dynamic
-    _, knn_indices = distance.topk(num_candidates, largest=False)
+    sorted_indices = np.argsort(entropy_values)[::-1]
+
+    knn_indices = sorted_indices[:num_candidates]
 
     return knn_indices
