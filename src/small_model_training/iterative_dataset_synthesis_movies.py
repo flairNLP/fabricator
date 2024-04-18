@@ -5,7 +5,7 @@ from fabricator.prompts import BasePrompt
 label_options = ["positive", "negative"]
 
 prompt = BasePrompt(
-    task_description="You are writing a movie review. Write only one {} movie review similar to the following examples.",
+    task_description="Generate a {} movie review similar to this:",
     label_options=label_options,
     target_formatting_template="",
 )
@@ -13,7 +13,7 @@ prompt = BasePrompt(
 prompt_node = PromptNode(
     model_name_or_path="mistralai/Mistral-7B-Instruct-v0.1",
     max_length=500,
-    model_kwargs={"temperature": 0.9},
+    model_kwargs={"temperature": 2},
 
 )
 
