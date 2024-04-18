@@ -9,5 +9,7 @@
   "evaluation_strategy":"epoch",
   "save_strategy":"epoch",
   "load_best_model_at_end":true,
-  "push_to_hub":false
+  "push_to_hub":false,
+  "avoid_duplicate_fewshots": true,
+  "max_inf_subset_size": 5
 }
