@@ -5,13 +5,16 @@ from fabricator.prompts import BasePrompt
 label_options = ["positive", "negative"]
 
 prompt = BasePrompt(
-    task_description="Generate a {} movie review.",
+    task_description="You are writing a movie review. Write only one {} movie review similar to the following examples.",
     label_options=label_options,
+    target_formatting_template="",
 )
 
 prompt_node = PromptNode(
     model_name_or_path="mistralai/Mistral-7B-Instruct-v0.1",
-    max_length=100,
+    max_length=500,
+    model_kwargs={"temperature": 0.9},
+
 )
 
 generator = DatasetGenerator(prompt_node)

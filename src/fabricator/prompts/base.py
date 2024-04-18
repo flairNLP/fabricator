@@ -192,9 +192,9 @@ class BasePrompt:
         if examples:
             # due to small_model training fewshot_examples appear after some iterations
             if self.relevant_columns_for_fewshot_examples is None:
-                self.relevant_columns_for_fewshot_examples = examples.column_names
+                self.relevant_columns_for_fewshot_examples = ['text']
                 self.fewshot_prompt = self.inner_fewshot_example_separator.join(
-                    [f"{var}: {{{var}}}" for var in self.relevant_columns_for_fewshot_examples]
+                    [f"{{{var}}}" for var in self.relevant_columns_for_fewshot_examples]
                 )
             examples = self.filter_examples_by_columns(examples, self.relevant_columns_for_fewshot_examples)
             formatted_examples = [self.fewshot_prompt.format(**example) for example in examples]
