@@ -1,6 +1,7 @@
 import math
 import torch.nn
 import numpy as np
+import os
 from dataclasses import dataclass, field
 from transformers import AutoTokenizer
 from transformers import DataCollatorWithPadding
@@ -31,14 +32,27 @@ def get_influential_subset(dataset):
 
     # trace labels
     for entry in dataset:
-        if entry['label'] not in label2id:
-            label2id[entry['label']] = counter
-            id2label[counter] = entry['label']
+        if entry["label"] not in label2id:
+            label2id[entry["label"]] = counter
+            id2label[counter] = entry["label"]
             counter += 1
+
+    #get path to config
+    def get_project_root() -> str:
+        current_dir = os.path.abspath(os.path.dirname(__file__))
+        while not os.path.isfile(os.path.join(current_dir, "README.md")):
+            current_dir = os.path.dirname(current_dir)
+        return current_dir
+
+    def get_path_to_json_file(relative_path_to_json_file) -> str:
+        project_root = get_project_root()
+        return os.path.join(project_root, relative_path_to_json_file)
+
+    path_to_json_file = get_path_to_json_file("src/small_model_training/config.json")
 
     # get parameters from config
     parser = HfArgumentParser((ModelArguments, TrainingArguments, FewshotArguments))
-    model_args, training_args, fewshot_args = parser.parse_json_file('config.json')
+    model_args, training_args, fewshot_args = parser.parse_json_file(path_to_json_file)
 
     # setup preprocessing
     tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
@@ -100,7 +114,7 @@ def get_influential_subset(dataset):
 
         # Iterate through the dataset and filter out duplicates
         for example in inf_subset:
-            text = example['text']
+            text = example["text"]
             if text not in unique_samples:
                 unique_samples.add(text)
                 deduplicated_inf_subset.append(example)

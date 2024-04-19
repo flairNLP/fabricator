@@ -303,7 +303,7 @@ class DatasetGenerator:
             if train_small_model_every_x_generations is not None and train_small_model_every_x_generations > 0:
                 if prompt_call_idx % train_small_model_every_x_generations == 0:
                     logger.info("Commencing small model training.")
-                    small_model = import_module(small_model_training,"src.small_model_training")
+                    small_model = import_module("src.small_model_training." + small_model_training, __package__)
                     inf_subset = small_model.get_influential_subset(generated_dataset)
                     fewshot_dataset = inf_subset
                     logger.info("Continuing generation.")
