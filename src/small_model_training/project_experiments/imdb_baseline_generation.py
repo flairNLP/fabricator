@@ -12,18 +12,16 @@ prompt = BasePrompt(
 
 prompt_node = PromptNode(
     model_name_or_path="mistralai/Mistral-7B-Instruct-v0.1",
-    max_length=500,
-    model_kwargs={"temperature": 2},
+    max_length=300,
+    model_kwargs={"model_kwargs": {"do_sample": True, "temperature": 0.4, "top_p": 1}},
 
 )
 
 generator = DatasetGenerator(prompt_node)
 generated_dataset = generator.generate(
     prompt_template=prompt,
-    max_prompt_calls=100,
-    num_samples_to_generate=100,
-    small_model_training='text_classification',
-    train_small_model_every_X_generations=10,
+    max_prompt_calls=500,
+    num_samples_to_generate=500,
 )
 
-generated_dataset.push_to_hub("your-first-generated-dataset")
+generated_dataset.push_to_hub("500-movie-reviews-baseline")
