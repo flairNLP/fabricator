@@ -57,7 +57,6 @@ def get_influential_subset(dataset):
     # setup preprocessing
     tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
 
-
     def preprocess_function(batch):
         preprocessed_tokens = tokenizer(batch["text"], truncation=True, padding=True)
         preprocessed_tokens["label"] = [label2id[label] for label in batch["label"]]
