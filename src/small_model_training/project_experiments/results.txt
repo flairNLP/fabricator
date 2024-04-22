@@ -1,0 +1,59 @@
+2024-04-20 18:16:09.051348 - imdb_baseline_downstream
+accuracy: 0.70888
+2024-04-20 18:33:29.958837 - imdb_smt_downstream
+accuracy: 0.71472
+2024-04-20 19:02:18.876448 - imdb_gold_downstream
+accuracy: 0.92564
+2024-04-20 19:07:58.400482 - imdb_baseline_downstream
+accuracy: 0.75712
+2024-04-20 19:34:57.065091 - imdb_smt_downstream
+accuracy: 0.80548
+2024-04-20 19:58:22.866475 - imdb_gold_downstream
+accuracy: 0.9362
+2024-04-20 20:11:17.263904 - imdb_baseline_downstream
+accuracy: 0.78044
+2024-04-20 20:18:53.705243 - imdb_smt_downstream
+accuracy: 0.74656
+2024-04-20 20:25:31.506083 - imdb_baseline_downstream
+accuracy: 0.71764
+2024-04-20 20:30:02.072664 - imdb_smt_downstream
+accuracy: 0.74388
+2024-04-20 20:36:23.052184 - imdb_smt_downstream
+accuracy: 0.76328
+2024-04-20 20:41:17.785029 - imdb_smt_downstream
+accuracy: 0.75412
+2024-04-20 20:47:52.320696 - imdb_smt_downstream
+accuracy: 0.74264
+2024-04-20 21:03:24.756465 - imdb_smt_downstream
+accuracy: 0.62436
+2024-04-20 21:08:09.422244 - imdb_smt_downstream
+accuracy: 0.70852
+2024-04-20 21:12:37.197747 - imdb_smt_downstream
+accuracy: 0.689
+2024-04-20 21:17:39.122623 - imdb_baseline_downstream
+accuracy: 0.73964
+2024-04-20 21:22:11.352305 - imdb_baseline_downstream
+accuracy: 0.75628
+2024-04-20 21:28:40.120714 - imdb_baseline_downstream
+accuracy: 0.78204
+2024-04-20 21:33:09.252013 - imdb_baseline_downstream
+accuracy: 0.76
+2024-04-20 21:38:19.924798 - imdb_baseline_downstream
+accuracy: 0.68312
+2024-04-20 21:43:15.356589 - imdb_baseline_downstream
+accuracy: 0.74828
+changes were made
+2024-04-21 00:38:23.704272 - imdb_smt_downstream
+accuracy: 0.7584
+2024-04-21 00:43:11.134331 - imdb_smt_downstream
+accuracy: 0.73408
+2024-04-21 01:09:39.309912 - imdb_baseline_downstream
+accuracy: 0.71176
+2024-04-21 01:14:29.632560 - imdb_baseline_downstream
+accuracy: 0.61416
+2024-04-21 01:19:43.723978 - imdb_baseline_downstream
+accuracy: 0.70148
+2024-04-21 01:24:43.599067 - imdb_smt_downstream
+accuracy: 0.71724
+2024-04-21 01:30:52.385596 - imdb_smt_downstream
+accuracy: 0.57492
