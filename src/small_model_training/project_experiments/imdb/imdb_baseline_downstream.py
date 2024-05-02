@@ -12,26 +12,33 @@ test_split = load_dataset("imdb", split="test")
 
 model_name = "bert-base-uncased"
 
-label2id = {"positive":1, "negative":0, "pos":1, "neg":0}
+label2id = {"positive": 1, "negative": 0, "pos": 1, "neg": 0}
 id2label = {1: "positive", 0: "negative"}
 
 # setup preprocessing
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
+
 def preprocess_text(batch):
     preprocessed_tokens = tokenizer(batch["text"], truncation=True, padding=True)
     return preprocessed_tokens
+
+
 def preprocess_text_and_labels(batch):
     preprocessed_tokens = tokenizer(batch["text"], truncation=True, padding=True)
     preprocessed_tokens["label"] = [label2id[label] for label in batch["label"]]
     return preprocessed_tokens
 
+
 # setup compute_metrics
 accuracy = evaluate.load("accuracy")
+
+
 def compute_metrics(eval_pred):
     predictions, labels = eval_pred
     predictions = np.argmax(predictions, axis=1)
     return accuracy.compute(predictions=predictions, references=labels)
+
 
 generated_dataset = generated_dataset.train_test_split(test_size=0.1)
 train_split = generated_dataset["train"]
@@ -59,7 +66,7 @@ trainer = Trainer(
         weight_decay=0.01,
         evaluation_strategy="epoch",
         save_strategy="epoch",
-        load_best_model_at_end=True
+        load_best_model_at_end=True,
     ),
     train_dataset=tokenized_train,
     eval_dataset=tokenized_val,
@@ -78,9 +85,6 @@ results_path = f"{experiments_directory}/{results_file}"
 
 results_timestamp = datetime.datetime.now()
 
-with open(results_path, 'a') as file:
+with open(results_path, "a") as file:
     file.write(f"{results_timestamp} - imdb_baseline_downstream\n")
     file.write(f"accuracy: {test_accuracy}\n")
-
-
-

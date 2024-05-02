@@ -5,14 +5,24 @@ import os
 from dataclasses import dataclass, field
 from transformers import AutoTokenizer
 from transformers import DataCollatorWithPadding
-from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer, HfArgumentParser
+from transformers import (
+    AutoModelForSequenceClassification,
+    TrainingArguments,
+    Trainer,
+    HfArgumentParser,
+)
 from datasets import load_dataset, Dataset
 import evaluate
+
+
 @dataclass
 class ModelArguments:
     model_name_or_path: str = field(
-        metadata={"help": "Path to pretrained model or model from huggingface.co/models"}
+        metadata={
+            "help": "Path to pretrained model or model from huggingface.co/models"
+        }
     )
+
 
 @dataclass
 class FewshotArguments:
@@ -22,6 +32,7 @@ class FewshotArguments:
     max_inf_subset_size: int = field(
         metadata={"help": "Limit for the size of the influential subset"}
     )
+
 
 def get_influential_subset(dataset):
     id2label = {}
@@ -37,7 +48,7 @@ def get_influential_subset(dataset):
             id2label[counter] = entry["label"]
             counter += 1
 
-    #get path to config
+    # get path to config
     def get_project_root() -> str:
         current_dir = os.path.abspath(os.path.dirname(__file__))
         while not os.path.isfile(os.path.join(current_dir, "README.md")):
@@ -64,6 +75,7 @@ def get_influential_subset(dataset):
 
     # setup compute_metrics
     accuracy = evaluate.load("accuracy")
+
     def compute_metrics(eval_pred):
         predictions, labels = eval_pred
         predictions = np.argmax(predictions, axis=1)
@@ -81,7 +93,10 @@ def get_influential_subset(dataset):
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
     model = AutoModelForSequenceClassification.from_pretrained(
-        model_args.model_name_or_path, num_labels=counter, id2label=id2label, label2id=label2id
+        model_args.model_name_or_path,
+        num_labels=counter,
+        id2label=id2label,
+        label2id=label2id,
     )
 
     # initialize training
@@ -100,7 +115,10 @@ def get_influential_subset(dataset):
 
     inf_subset = []
 
-    indices = calculate_candidates_entropy_knn(outputs, min(math.ceil(len(dataset["test"])/2),fewshot_args.max_inf_subset_size))
+    indices = calculate_candidates_entropy_knn(
+        outputs,
+        min(math.ceil(len(dataset["test"]) / 2), fewshot_args.max_inf_subset_size),
+    )
 
     for elem in indices:
         inf_subset.append(dataset["test"][elem.item()])
@@ -121,13 +139,14 @@ def get_influential_subset(dataset):
 
     return inf_subset
 
-#TO-DO: dynamic variant for calculating inf_subset
+
 def calculate_candidates_entropy_knn(model_outputs, num_candidates):
     logits = model_outputs[0]
 
     logits = torch.from_numpy(logits)
 
     scores = torch.nn.functional.softmax(logits, dim=-1)
+
     def entropy(probabilities):
         return -torch.sum(probabilities * torch.log2(probabilities))
 

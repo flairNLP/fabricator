@@ -6,7 +6,8 @@ from loguru import logger
 
 class BasePrompt:
     """Base class for prompt generation. This class formats the prompt for the fewshot / support set examples
-    and the target variable such that the dataset generator can simply put in the invocation context."""
+    and the target variable such that the dataset generator can simply put in the invocation context.
+    """
 
     DEFAULT_TEXT_COLUMN = ["text"]
     DEFAULT_LABEL_COLUMN = ["label"]
@@ -63,7 +64,9 @@ class BasePrompt:
         self.inner_fewshot_example_separator = inner_fewshot_example_separator
 
         if fewshot_example_columns:
-            self.relevant_columns_for_fewshot_examples = self.fewshot_example_columns + self.generate_data_for_column
+            self.relevant_columns_for_fewshot_examples = (
+                self.fewshot_example_columns + self.generate_data_for_column
+            )
         elif generate_data_for_column:
             self.relevant_columns_for_fewshot_examples = self.generate_data_for_column
         else:
@@ -73,7 +76,10 @@ class BasePrompt:
         if self.relevant_columns_for_fewshot_examples:
             if fewshot_formatting_template is None:
                 self.fewshot_prompt = self.inner_fewshot_example_separator.join(
-                    [f"{var}: {{{var}}}" for var in self.relevant_columns_for_fewshot_examples]
+                    [
+                        f"{var}: {{{var}}}"
+                        for var in self.relevant_columns_for_fewshot_examples
+                    ]
                 )
             else:
                 self.fewshot_prompt = fewshot_formatting_template
@@ -94,8 +100,10 @@ class BasePrompt:
             task_description (str): Task description for the prompt (prefix).
         """
         if "testxyz" not in task_description.format("testxyz"):
-            raise KeyError("If you provide label_options, you need the task_description to be formattable like"
-                           " 'Generate a {} text.'")
+            raise KeyError(
+                "If you provide label_options, you need the task_description to be formattable like"
+                " 'Generate a {} text.'"
+            )
 
     def _infer_target_formatting_template(self) -> str:
         """Infer target formatting template from input columns and label column.
@@ -105,8 +113,8 @@ class BasePrompt:
         """
         if self.generate_data_for_column and self.fewshot_example_columns:
             target_template = self.inner_fewshot_example_separator.join(
-                [f"{var}: {{{var}}}" for var in self.fewshot_example_columns] +
-                [f"{self.generate_data_for_column[0]}: "]
+                [f"{var}: {{{var}}}" for var in self.fewshot_example_columns]
+                + [f"{self.generate_data_for_column[0]}: "]
             )
 
         elif self.generate_data_for_column and not self.fewshot_example_columns:
@@ -116,8 +124,10 @@ class BasePrompt:
             target_template = f"{self.DEFAULT_TEXT_COLUMN[0]}: "
 
         else:
-            raise ValueError("Either generate_data_for_column or generate_data_for_column + fewshot_example_columns "
-                             "must be provided to infer target template.")
+            raise ValueError(
+                "Either generate_data_for_column or generate_data_for_column + fewshot_example_columns "
+                "must be provided to infer target template."
+            )
 
         return target_template
 
@@ -139,11 +149,19 @@ class BasePrompt:
                 fewshot_examples[column] = [f"EXAMPLE TEXT FOR COLUMN {column}"]
             fewshot_examples = Dataset.from_dict(fewshot_examples)
 
-        return "\nThe prompt to the LLM will be like:\n" + 10*"-" + "\n"\
-            + self.get_prompt_text(label, fewshot_examples) + "\n" + 10*"-"
+        return (
+            "\nThe prompt to the LLM will be like:\n"
+            + 10 * "-"
+            + "\n"
+            + self.get_prompt_text(label, fewshot_examples)
+            + "\n"
+            + 10 * "-"
+        )
 
     @staticmethod
-    def filter_example_by_columns(example: Dict[str, str], columns: List[str]) -> Dict[str, str]:
+    def filter_example_by_columns(
+        example: Dict[str, str], columns: List[str]
+    ) -> Dict[str, str]:
         """Filter single example by columns.
 
         Args:
@@ -153,10 +171,14 @@ class BasePrompt:
         Returns:
             Dict[str, str]: Filtered example
         """
-        filtered_example = {key: value for key, value in example.items() if key in columns}
+        filtered_example = {
+            key: value for key, value in example.items() if key in columns
+        }
         return filtered_example
 
-    def filter_examples_by_columns(self, dataset: Dataset, columns: List[str]) -> List[Dict[str, str]]:
+    def filter_examples_by_columns(
+        self, dataset: Dataset, columns: List[str]
+    ) -> List[Dict[str, str]]:
         """Filter examples by columns.
 
         Args:
@@ -171,7 +193,9 @@ class BasePrompt:
             filtered_inputs.append(self.filter_example_by_columns(example, columns))
         return filtered_inputs
 
-    def get_prompt_text(self, labels: Union[str, List[str]] = None, examples: Optional[Dataset] = None) -> str:
+    def get_prompt_text(
+        self, labels: Union[str, List[str]] = None, examples: Optional[Dataset] = None
+    ) -> str:
         """Get prompt text for the given examples.
 
         Args:
@@ -188,21 +212,27 @@ class BasePrompt:
             task_description = self.task_description.format(labels)
             # due to small_model training fewshot_examples may have different labels
             if examples:
-                examples = examples.filter(lambda example: example['label'] == labels)
+                examples = examples.filter(lambda example: example["label"] == labels)
         else:
             task_description = self.task_description
 
         if examples:
             # due to small_model training fewshot_examples appear after some iterations
             if self.relevant_columns_for_fewshot_examples is None:
-                self.relevant_columns_for_fewshot_examples = ['text']
+                self.relevant_columns_for_fewshot_examples = ["text"]
                 self.fewshot_prompt = self.inner_fewshot_example_separator.join(
                     [f"{{{var}}}" for var in self.relevant_columns_for_fewshot_examples]
                 )
-            examples = self.filter_examples_by_columns(examples, self.relevant_columns_for_fewshot_examples)
-            formatted_examples = [self.fewshot_prompt.format(**example) for example in examples]
+            examples = self.filter_examples_by_columns(
+                examples, self.relevant_columns_for_fewshot_examples
+            )
+            formatted_examples = [
+                self.fewshot_prompt.format(**example) for example in examples
+            ]
             prompt_text = self.fewshot_example_separator.join(
-                [task_description] + formatted_examples + [self.target_formatting_template]
+                [task_description]
+                + formatted_examples
+                + [self.target_formatting_template]
             )
         else:
             prompt_text = self.fewshot_example_separator.join(

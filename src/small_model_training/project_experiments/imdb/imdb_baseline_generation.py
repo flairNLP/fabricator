@@ -14,7 +14,6 @@ prompt_node = PromptNode(
     model_name_or_path="mistralai/Mistral-7B-Instruct-v0.1",
     max_length=300,
     model_kwargs={"model_kwargs": {"do_sample": True, "temperature": 0.4, "top_p": 1}},
-
 )
 
 generator = DatasetGenerator(prompt_node)
