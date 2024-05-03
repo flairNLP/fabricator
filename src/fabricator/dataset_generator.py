@@ -232,7 +232,7 @@ class DatasetGenerator:
             ):
                 prompt_labels = choice(prompt_labels, 1)[0]
 
-            if fewshot_dataset and prompt_labels in fewshot_dataset["label"]:
+            if fewshot_dataset:
                 prompt_labels, fewshot_examples = self._sample_fewshot_examples(
                     prompt_labels,
                     fewshot_dataset,

@@ -211,7 +211,7 @@ class BasePrompt:
         if labels:
             task_description = self.task_description.format(labels)
             # due to small_model training fewshot_examples may have different labels
-            if examples:
+            if examples and "," not in labels:
                 examples = examples.filter(lambda example: example["label"] == labels)
         else:
             task_description = self.task_description

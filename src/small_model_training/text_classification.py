@@ -126,10 +126,10 @@ def get_influential_subset(dataset):
     inf_subset = Dataset.from_list(inf_subset)
 
     if fewshot_args.avoid_duplicate_fewshots:
-        unique_samples = set()  # Set to store unique samples
-        deduplicated_inf_subset = []  # List to store deduplicated samples
+        unique_samples = set()
+        deduplicated_inf_subset = []
 
-        # Iterate through the dataset and filter out duplicates
+        # iterate through the dataset and filter out duplicates
         for example in inf_subset:
             text = example["text"]
             if text not in unique_samples:
