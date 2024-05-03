@@ -13,7 +13,9 @@ prompt = BasePrompt(
 prompt_node = PromptNode(
     model_name_or_path="mistralai/Mistral-7B-Instruct-v0.1",
     max_length=300,
-    model_kwargs={"model_kwargs": {"do_sample": True, "temperature": 0.4, "top_p": 1}},
+    model_kwargs={
+        "model_kwargs": {"do_sample": True, "temperature": 0.5, "top_p": 0.9}
+    },
 )
 
 generator = DatasetGenerator(prompt_node)
@@ -25,4 +27,4 @@ generated_dataset = generator.generate(
     train_small_model_every_X_generations=50,
 )
 
-generated_dataset.push_to_hub("500-movie-reviews-smt")
+generated_dataset.push_to_hub("500-imdb-movie-reviews-smt")

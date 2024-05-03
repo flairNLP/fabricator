@@ -7,7 +7,9 @@ from transformers import AutoModelForSequenceClassification, Trainer
 from datasets import load_dataset
 import evaluate
 
-generated_dataset = load_dataset("stolzenp/500-movie-reviews-baseline", split="train")
+generated_dataset = load_dataset(
+    "stolzenp/500-imdb-movie-reviews-baseline", split="train"
+)
 test_split = load_dataset("imdb", split="test")
 
 model_name = "bert-base-uncased"
