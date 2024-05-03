@@ -11,7 +11,7 @@ from transformers import (
     Trainer,
     HfArgumentParser,
 )
-from datasets import load_dataset, Dataset
+from datasets import Dataset
 import evaluate
 
 
