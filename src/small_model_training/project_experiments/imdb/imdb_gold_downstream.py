@@ -79,5 +79,5 @@ results_path = f"{experiments_directory}/{results_file}"
 results_timestamp = datetime.datetime.now()
 
 with open(results_path, "a") as file:
-    file.write(f"{results_timestamp} - imdb_gold_downstream\n")
+    file.write(f"{results_timestamp} - imdb_gold\n")
     file.write(f"accuracy: {test_accuracy}\n")

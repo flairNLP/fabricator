@@ -86,5 +86,5 @@ results_path = f"{experiments_directory}/{results_file}"
 results_timestamp = datetime.datetime.now()
 
 with open(results_path, "a") as file:
-    file.write(f"{results_timestamp} - sst2_smt_downstream\n")
+    file.write(f"{results_timestamp} - sst2_smt\n")
     file.write(f"accuracy: {test_accuracy}\n")
