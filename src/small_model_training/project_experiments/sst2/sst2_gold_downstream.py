@@ -7,9 +7,15 @@ from transformers import AutoModelForSequenceClassification, Trainer
 from datasets import load_dataset
 import evaluate
 
-train_split = load_dataset("sst2", split="train")
-val_split = load_dataset("sst2", split="validation")
-test_split = load_dataset("sst2", split="test")
+gold_dataset = load_dataset("sst2", split="train")
+gold_dataset = gold_dataset.remove_columns("idx")
+gold_dataset = gold_dataset.rename_column("sentence", "text")
+gold_dataset = gold_dataset.train_test_split(test_size=0.1)
+train_split = gold_dataset["train"]
+val_split = gold_dataset["test"]
+test_split = load_dataset("sst2", split="validation")
+test_split = test_split.remove_columns("idx")
+test_split = test_split.rename_column("sentence", "text")
 
 model_name = "bert-base-uncased"
 

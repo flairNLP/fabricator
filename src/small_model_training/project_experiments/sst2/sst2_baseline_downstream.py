@@ -10,7 +10,9 @@ import evaluate
 generated_dataset = load_dataset(
     "stolzenp/500-sst2-movie-reviews-baseline", split="train"
 )
-test_split = load_dataset("sst2", split="test")
+test_split = load_dataset("sst2", split="validation")
+test_split = test_split.remove_columns("idx")
+test_split = test_split.rename_column("sentence", "text")
 
 model_name = "bert-base-uncased"
 
